@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Prisma 6 supports enums on SQLite: they are stored as TEXT and validated by
+// the generated client. These are the canonical value sets for the engine.
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalStatus {
+  PENDING
+  POSTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+}
+
+enum BillStatus {
+  DRAFT
+  RECEIVED
+  PAID
+}
+
+enum BankTxnStatus {
+  UNRECONCILED
+  RECONCILED
+}
+
+enum BankTxnType {
+  INFLOW
+  OUTFLOW
+}
+
+model Account {
+  id       String      @id @default(cuid())
+  code     String      @unique
+  name     String      @unique
+  type     AccountType
+  category String
+  isSystem Boolean     @default(false)
+  balance  Decimal     @default(0)
+
+  journalLines JournalLine[]
+
+  @@index([type])
+  @@index([category])
+}
+
+model JournalEntry {
+  id     String        @id @default(cuid())
+  date   DateTime
+  memo   String?
+  status JournalStatus @default(PENDING)
+  lines  JournalLine[]
+
+  @@index([status])
+  @@index([date])
+}
+
+model JournalLine {
+  id             String   @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal  @default(0)
+  credit         Decimal  @default(0)
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model Customer {
+  id    String  @id @default(cuid())
+  name  String
+  email String?
+  phone String?
+
+  invoices SalesInvoice[]
+}
+
+model Vendor {
+  id    String  @id @default(cuid())
+  name  String
+  email String?
+  phone String?
+
+  bills PurchaseBill[]
+}
+
+model Item {
+  id            String  @id @default(cuid())
+  name          String
+  sku           String?
+  price         Decimal
+  cost          Decimal
+  stockQuantity Int     @default(0)
+
+  invoiceLines InvoiceLine[]
+}
+
+model SalesInvoice {
+  id            String        @id @default(cuid())
+  customerId    String
+  invoiceNumber String        @unique
+  date          DateTime
+  dueDate       DateTime
+  status        InvoiceStatus @default(DRAFT)
+  totalAmount   Decimal
+  amountPaid    Decimal       @default(0)
+
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  lines            InvoiceLine[]
+  bankTransactions BankTransaction[] @relation("MatchedInvoice")
+
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  itemId      String?
+  description String
+  quantity    Decimal
+  unitPrice   Decimal
+  total       Decimal
+
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item    Item?        @relation(fields: [itemId], references: [id])
+
+  @@index([invoiceId])
+  @@index([itemId])
+}
+
+model PurchaseBill {
+  id          String     @id @default(cuid())
+  vendorId    String
+  billNumber  String     @unique
+  date        DateTime
+  dueDate     DateTime
+  status      BillStatus @default(DRAFT)
+  totalAmount Decimal
+  amountPaid  Decimal    @default(0)
+
+  vendor           Vendor            @relation(fields: [vendorId], references: [id])
+  lines            BillLine[]
+  bankTransactions BankTransaction[] @relation("MatchedBill")
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model BillLine {
+  id          String  @id @default(cuid())
+  billId      String
+  description String
+  quantity    Decimal
+  unitCost    Decimal
+  total       Decimal
+
+  bill PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
+}
+
+model BankTransaction {
+  id               String        @id @default(cuid())
+  date             DateTime
+  description      String
+  amount           Decimal
+  type             BankTxnType
+  status           BankTxnStatus @default(UNRECONCILED)
+  matchedInvoiceId String?
+  matchedBillId    String?
+
+  matchedInvoice SalesInvoice? @relation("MatchedInvoice", fields: [matchedInvoiceId], references: [id], onDelete: SetNull)
+  matchedBill    PurchaseBill?  @relation("MatchedBill", fields: [matchedBillId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([date])
+  @@index([matchedInvoiceId])
+  @@index([matchedBillId])
+}

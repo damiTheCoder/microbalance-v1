@@ -1,0 +1,13 @@
+{
+  "name": "microbalance-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MicroBalance accounting engine, AI service, mock AI server, and DeepSeek Harness UI plugin",
+  "scripts": {
+    "core:dev": "pnpm --dir microbalance-core dev",
+    "core:start": "pnpm --dir microbalance-core start",
+    "ai:dev": "pnpm --dir microbalance-ai dev",
+    "mock:dev": "pnpm --dir microbalance-mock-ai dev",
+    "typecheck": "pnpm --dir microbalance-core typecheck && pnpm --dir microbalance-ai typecheck && pnpm --dir microbalance-mock-ai typecheck"
+  }
+}

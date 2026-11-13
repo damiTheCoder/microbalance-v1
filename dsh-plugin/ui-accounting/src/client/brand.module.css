@@ -1,0 +1,14 @@
+/* Sidebar identity: a square product mark and a crisp wordmark. */
+
+.mark {
+  display: block;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
