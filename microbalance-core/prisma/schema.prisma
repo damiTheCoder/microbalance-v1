@@ -55,6 +55,7 @@ model Account {
   balance  Decimal     @default(0)
 
   journalLines JournalLine[]
+  budgetLines  BudgetLine[]
 
   @@index([type])
   @@index([category])
@@ -158,6 +159,9 @@ model PurchaseBill {
   status      BillStatus @default(DRAFT)
   totalAmount Decimal
   amountPaid  Decimal    @default(0)
+  whtRate     Decimal    @default(0)
+  whtAmount   Decimal    @default(0)
+  netPayable  Decimal    @default(0)
 
   vendor           Vendor            @relation(fields: [vendorId], references: [id])
   lines            BillLine[]
@@ -198,4 +202,91 @@ model BankTransaction {
   @@index([date])
   @@index([matchedInvoiceId])
   @@index([matchedBillId])
+}
+
+model Employee {
+  id                 String  @id @default(cuid())
+  name               String
+  email              String?
+  basicSalary        Decimal @default(0)
+  housingAllowance   Decimal @default(0)
+  transportAllowance Decimal @default(0)
+  isActive           Boolean @default(true)
+  expenses           Expense[]
+}
+
+model PayrollRun {
+  id           String  @id @default(cuid())
+  month        String
+  year         Int
+  status       String  @default("DRAFT")
+  totalGross   Decimal @default(0)
+  totalNet     Decimal @default(0)
+  totalPaye    Decimal @default(0)
+  totalPension Decimal @default(0)
+  totalNhf     Decimal @default(0)
+
+  @@unique([month, year])
+}
+
+model ExpenseCategory {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  expenses Expense[]
+}
+
+model Expense {
+  id             String  @id @default(cuid())
+  date           DateTime
+  description    String
+  amount         Decimal
+  categoryId     String
+  employeeId     String?
+  paymentMethod  String
+  status         String  @default("PENDING")
+  journalEntryId String?
+
+  category ExpenseCategory @relation(fields: [categoryId], references: [id])
+  employee Employee?       @relation(fields: [employeeId], references: [id])
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([employeeId])
+}
+
+model FixedAsset {
+  id                      String    @id @default(cuid())
+  name                    String
+  category                String
+  purchaseDate            DateTime
+  cost                    Decimal
+  usefulLifeYears         Int
+  salvageValue            Decimal   @default(0)
+  accumulatedDepreciation Decimal   @default(0)
+  isDisposed              Boolean   @default(false)
+  disposalDate            DateTime?
+}
+
+model Budget {
+  id         String       @id @default(cuid())
+  name       String
+  fiscalYear Int
+  startDate  DateTime
+  endDate    DateTime
+  status     String       @default("ACTIVE")
+  lines      BudgetLine[]
+}
+
+model BudgetLine {
+  id        String  @id @default(cuid())
+  budgetId  String
+  accountId String
+  amount    Decimal
+  period    String  @default("ANNUAL")
+
+  budget  Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([budgetId])
+  @@index([accountId])
 }

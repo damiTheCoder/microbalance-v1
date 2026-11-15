@@ -25,6 +25,11 @@ const ACCOUNTS = [
   { code: '2110', name: 'WHT Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
   { code: '2200', name: 'Accruals', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
   { code: '2300', name: 'Short-term Loans', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
+  { code: '2400', name: 'PAYE Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
+  { code: '2410', name: 'Pension Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
+  { code: '2420', name: 'NHF Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
+  { code: '2430', name: 'Net Salaries Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
+  { code: '2440', name: 'Employee Reimbursement Payable', type: 'LIABILITY', category: 'Current Liabilities', isSystem: true },
   { code: '2500', name: 'Long-term Loans', type: 'LIABILITY', category: 'Non-current Liabilities', isSystem: true },
 
   // Equity
@@ -34,8 +39,11 @@ const ACCOUNTS = [
   // Revenue
   { code: '4000', name: 'Sales Revenue', type: 'REVENUE', category: 'Operating Revenue', isSystem: true },
   { code: '4100', name: 'Service Revenue', type: 'REVENUE', category: 'Operating Revenue', isSystem: true },
+  { code: '4200', name: 'Inventory Adjustment', type: 'REVENUE', category: 'Operating Revenue', isSystem: true },
+  { code: '4750', name: 'Gain on Asset Disposal', type: 'REVENUE', category: 'Operating Revenue', isSystem: true },
 
   // Expenses
+  { code: '5000', name: 'Cost of Goods Sold', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6000', name: 'Rent Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6100', name: 'Salaries Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6200', name: 'Utilities Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
@@ -44,6 +52,20 @@ const ACCOUNTS = [
   { code: '6500', name: 'Insurance Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6600', name: 'Professional Fees', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6700', name: 'Bank Charges', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '6800', name: 'Office Supplies Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '6900', name: 'Travel Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '6910', name: 'Meals & Entertainment Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '6920', name: 'Fuel Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '6950', name: 'Loss on Asset Disposal', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+] as const;
+
+const EXPENSE_CATEGORIES = [
+  'Office Supplies',
+  'Travel',
+  'Utilities',
+  'Meals & Entertainment',
+  'Fuel',
+  'Rent',
 ] as const;
 
 const CUSTOMERS = [
@@ -106,6 +128,14 @@ async function main(): Promise<void> {
         },
       });
     }
+  }
+
+  for (const name of EXPENSE_CATEGORIES) {
+    await prisma.expenseCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
   }
 
   const [accounts, customers, vendors, items] = await Promise.all([

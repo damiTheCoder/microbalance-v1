@@ -20,14 +20,40 @@ import { ChartOfAccountsPage } from './ChartOfAccounts.tsx'
 import { DashboardPage } from './Dashboard.tsx'
 import { ManualJournalPage } from './ManualJournal.tsx'
 import { ProfitLossPage } from './ProfitLoss.tsx'
+import { ArAgingPage, CustomersPage, InvoicesPage } from './Sales.tsx'
+import { BankReconPage, PaymentsPage } from './Banking.tsx'
+import { ApprovalsPage } from './Approvals.tsx'
+import { ApAgingPage, BillsPage, VendorsPage } from './Purchases.tsx'
+import { ProductsPage, StockOverviewPage } from './Inventory.tsx'
+import { TaxDashboardPage } from './Tax.tsx'
+import { EmployeesPage, PayrollPage } from './Payroll.tsx'
+import { ExpenseCategoriesPage, ExpensesPage } from './Expenses.tsx'
+import { AssetRegisterPage, DepreciationPage } from './FixedAssets.tsx'
+import { BudgetVsActualPage, BudgetsPage } from './Budgets.tsx'
 import { TrialBalancePage } from './TrialBalance.tsx'
 import {
+  BarChartIcon,
   BookOpenIcon,
+  BuildingIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  FileTextIcon,
   HomeIcon,
+  HourglassIcon,
   LandmarkIcon,
+  LayoutGridIcon,
+  LinkIcon,
   ListIcon,
+  PackageIcon,
+  PercentIcon,
+  ReceiptIcon,
   ScaleIcon,
+  TargetIcon,
+  TrendingDownIcon,
   TrendingUpIcon,
+  TruckIcon,
+  UsersIcon,
+  WalletIcon,
 } from './icons.tsx'
 
 /** Required client service: the slot registry. */
@@ -64,6 +90,13 @@ const PANELS: readonly PanelDefinition[] = [
     Icon: BookOpenIcon,
   },
   {
+    id: 'approvals' as MainPanelId,
+    label: 'General Ledger::Journal Approvals',
+    order: 35,
+    Page: ApprovalsPage,
+    Icon: CheckCircleIcon,
+  },
+  {
     id: 'trial-balance' as MainPanelId,
     label: 'General Ledger::Trial Balance',
     order: 40,
@@ -71,16 +104,149 @@ const PANELS: readonly PanelDefinition[] = [
     Icon: ScaleIcon,
   },
   {
+    id: 'customers' as MainPanelId,
+    label: 'Sales & Receivables::Customers',
+    order: 45,
+    Page: CustomersPage,
+    Icon: UsersIcon,
+  },
+  {
+    id: 'invoices' as MainPanelId,
+    label: 'Sales & Receivables::Invoices',
+    order: 46,
+    Page: InvoicesPage,
+    Icon: ReceiptIcon,
+  },
+  {
+    id: 'ar-aging' as MainPanelId,
+    label: 'Sales & Receivables::AR Aging',
+    order: 47,
+    Page: ArAgingPage,
+    Icon: HourglassIcon,
+  },
+  {
+    id: 'payments' as MainPanelId,
+    label: 'Banking::Payments',
+    order: 48,
+    Page: PaymentsPage,
+    Icon: WalletIcon,
+  },
+  {
+    id: 'bank-recon' as MainPanelId,
+    label: 'Banking::Bank Recon',
+    order: 49,
+    Page: BankReconPage,
+    Icon: LinkIcon,
+  },
+  {
+    id: 'vendors' as MainPanelId,
+    label: 'Purchases & Payables::Vendors',
+    order: 50,
+    Page: VendorsPage,
+    Icon: BuildingIcon,
+  },
+  {
+    id: 'bills' as MainPanelId,
+    label: 'Purchases & Payables::Bills',
+    order: 51,
+    Page: BillsPage,
+    Icon: FileTextIcon,
+  },
+  {
+    id: 'ap-aging' as MainPanelId,
+    label: 'Purchases & Payables::AP Aging',
+    order: 52,
+    Page: ApAgingPage,
+    Icon: HourglassIcon,
+  },
+  {
+    id: 'products' as MainPanelId,
+    label: 'Inventory::Products',
+    order: 53,
+    Page: ProductsPage,
+    Icon: PackageIcon,
+  },
+  {
+    id: 'stock-overview' as MainPanelId,
+    label: 'Inventory::Stock Overview',
+    order: 54,
+    Page: StockOverviewPage,
+    Icon: LayoutGridIcon,
+  },
+  {
+    id: 'tax-dashboard' as MainPanelId,
+    label: 'Tax & Compliance::Tax Dashboard',
+    order: 55,
+    Page: TaxDashboardPage,
+    Icon: PercentIcon,
+  },
+  {
+    id: 'employees' as MainPanelId,
+    label: 'Payroll::Employees',
+    order: 56,
+    Page: EmployeesPage,
+    Icon: UsersIcon,
+  },
+  {
+    id: 'payroll' as MainPanelId,
+    label: 'Payroll::Run Payroll',
+    order: 57,
+    Page: PayrollPage,
+    Icon: CalendarIcon,
+  },
+  {
+    id: 'expenses' as MainPanelId,
+    label: 'Expenses::All Expenses',
+    order: 58,
+    Page: ExpensesPage,
+    Icon: WalletIcon,
+  },
+  {
+    id: 'expense-categories' as MainPanelId,
+    label: 'Expenses::Expense Categories',
+    order: 59,
+    Page: ExpenseCategoriesPage,
+    Icon: ListIcon,
+  },
+  {
+    id: 'assets' as MainPanelId,
+    label: 'Fixed Assets::Asset Register',
+    order: 60,
+    Page: AssetRegisterPage,
+    Icon: TruckIcon,
+  },
+  {
+    id: 'depreciation' as MainPanelId,
+    label: 'Fixed Assets::Run Depreciation',
+    order: 61,
+    Page: DepreciationPage,
+    Icon: TrendingDownIcon,
+  },
+  {
+    id: 'budgets' as MainPanelId,
+    label: 'Budgeting::Budgets',
+    order: 62,
+    Page: BudgetsPage,
+    Icon: TargetIcon,
+  },
+  {
+    id: 'budget-vs-actual' as MainPanelId,
+    label: 'Budgeting::Budget vs Actual',
+    order: 63,
+    Page: BudgetVsActualPage,
+    Icon: BarChartIcon,
+  },
+  {
     id: 'profit-loss' as MainPanelId,
     label: 'Financial Statements::Profit & Loss',
-    order: 50,
+    order: 70,
     Page: ProfitLossPage,
     Icon: TrendingUpIcon,
   },
   {
     id: 'balance-sheet' as MainPanelId,
     label: 'Financial Statements::Balance Sheet',
-    order: 60,
+    order: 80,
     Page: BalanceSheetPage,
     Icon: LandmarkIcon,
   },

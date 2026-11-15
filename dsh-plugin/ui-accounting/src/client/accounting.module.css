@@ -34,7 +34,9 @@
 }
 
 .card {
-  overflow: hidden;
+  /* Tables can outgrow the card on narrow screens; scroll horizontally instead
+     of wrapping cells or clipping columns. */
+  overflow-x: auto;
   border: 0;
   border-radius: 18px;
   background: #f4f5f7;
@@ -124,12 +126,14 @@
   letter-spacing: 0.05em;
   text-align: left;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .table td {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(17, 24, 39, 0.05);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .table tbody tr:last-child td {
@@ -393,4 +397,67 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 22px;
+}
+
+/* Inventory stock overview cards. */
+.stockGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.stockCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #f4f5f7;
+}
+
+.stockName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stockMeta {
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.stockQty {
+  color: #111827;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stockStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stockDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.stockIn {
+  color: #15803d;
+}
+
+.stockLow {
+  color: #b91c1c;
+}
+
+.stockOut {
+  color: #6b7280;
 }
