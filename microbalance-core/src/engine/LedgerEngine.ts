@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { companyPrisma } from '../lib/tenancy.js';
 import { isDebitNormal } from '../domain/types.js';
 import type { JournalStatus } from '../domain/types.js';
 import { LedgerError } from './errors.js';
@@ -156,6 +157,14 @@ export class LedgerEngine {
    *   LIABILITY / EQUITY / REVENUE -> credit - debit
    */
   async postJournal(id: string) {
+    const guard = await this.db.journalEntry.findUnique({
+      where: { id },
+      select: { isLocked: true },
+    });
+    if (guard?.isLocked === true) {
+      throw new LedgerError('STATE', 'Period is locked.');
+    }
+
     return this.db.$transaction(async (tx) => {
       const claim = await tx.journalEntry.updateMany({
         where: { id, status: 'PENDING' },
@@ -502,3 +511,7 @@ export class LedgerEngine {
 }
 
 export const ledgerEngine = new LedgerEngine();
+
+/** A ledger client confined to one company (for request handlers). */
+export const ledgerFor = (companyId: string): LedgerEngine =>
+  new LedgerEngine(companyPrisma(companyId));

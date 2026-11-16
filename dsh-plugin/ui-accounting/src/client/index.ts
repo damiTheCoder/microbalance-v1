@@ -12,6 +12,7 @@ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls the ui-layout `main` keyed slot and ui-sidebar's panellist
 // declaration into the SlotMap, and the renderer-owned slots service.
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import { MicroBalanceMark, MicroBalanceName } from './Brand.tsx'
@@ -30,6 +31,11 @@ import { EmployeesPage, PayrollPage } from './Payroll.tsx'
 import { ExpenseCategoriesPage, ExpensesPage } from './Expenses.tsx'
 import { AssetRegisterPage, DepreciationPage } from './FixedAssets.tsx'
 import { BudgetVsActualPage, BudgetsPage } from './Budgets.tsx'
+import { BusinessProfilePage } from './Settings.tsx'
+import { withAuth } from './AuthGate.tsx'
+import { DocumentCentrePage } from './Documents.tsx'
+import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
+import { LensButton } from './Lens.tsx'
 import { TrialBalancePage } from './TrialBalance.tsx'
 import {
   BarChartIcon,
@@ -48,6 +54,7 @@ import {
   PercentIcon,
   ReceiptIcon,
   ScaleIcon,
+  SettingsIcon,
   TargetIcon,
   TrendingDownIcon,
   TrendingUpIcon,
@@ -237,6 +244,34 @@ const PANELS: readonly PanelDefinition[] = [
     Icon: BarChartIcon,
   },
   {
+    id: 'business-profile' as MainPanelId,
+    label: 'Settings::Business Profile',
+    order: 64,
+    Page: BusinessProfilePage,
+    Icon: SettingsIcon,
+  },
+  {
+    id: 'document-centre' as MainPanelId,
+    label: 'Documents::Document Centre',
+    order: 65,
+    Page: DocumentCentrePage,
+    Icon: FileTextIcon,
+  },
+  {
+    id: 'audit-trail' as MainPanelId,
+    label: 'Audit & Compliance::Audit Trail',
+    order: 66,
+    Page: AuditTrailPage,
+    Icon: CheckCircleIcon,
+  },
+  {
+    id: 'period-lock' as MainPanelId,
+    label: 'Audit & Compliance::Period Lock',
+    order: 67,
+    Page: PeriodLockPage,
+    Icon: HourglassIcon,
+  },
+  {
     id: 'profit-loss' as MainPanelId,
     label: 'Financial Statements::Profit & Loss',
     order: 70,
@@ -263,11 +298,15 @@ export function apply(ctx: ClientContext): void {
       yield ctx.slots.register({ name: 'sidebar.brand.name' }, MicroBalanceName)
     }))
 
+  // Dual-action lens in the chat composer (next to the voice control).
+  ctx.slots.inject('conversation.input.right', () =>
+    ctx.slots.register({ name: 'conversation.input.right', id: 'lens', order: 90 }, LensButton))
+
   for (const panel of PANELS) {
     ctx.slots.inject('main', () =>
       ctx.slots.register(
         { name: 'main', key: panel.id },
-        panel.Page,
+        withAuth(panel.Page),
       ),
     )
 

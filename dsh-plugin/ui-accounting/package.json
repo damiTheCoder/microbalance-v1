@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/dsh-client-ui-conversation": "workspace:*",
     "@deepseek-ai/dsh-client-ui-layout": "workspace:*",
     "@deepseek-ai/dsh-client-ui-primitives": "workspace:*",
     "@deepseek-ai/dsh-client-ui-renderer": "workspace:*",
@@ -53,6 +54,7 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
+    "better-auth": "^1.7.25",
     "recharts": "^3.10.1"
   }
 }

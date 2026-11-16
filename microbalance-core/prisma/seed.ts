@@ -85,9 +85,15 @@ const ITEMS = [
 ];
 
 async function main(): Promise<void> {
+  await prisma.company.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: { id: 'default', name: 'MicroBalance Demo' },
+  });
+
   for (const account of ACCOUNTS) {
     await prisma.account.upsert({
-      where: { code: account.code },
+      where: { companyId_code: { companyId: 'default', code: account.code } },
       update: {
         name: account.name,
         type: account.type,
@@ -95,6 +101,7 @@ async function main(): Promise<void> {
         isSystem: account.isSystem,
       },
       create: {
+        companyId: 'default',
         code: account.code,
         name: account.name,
         type: account.type,
@@ -132,9 +139,9 @@ async function main(): Promise<void> {
 
   for (const name of EXPENSE_CATEGORIES) {
     await prisma.expenseCategory.upsert({
-      where: { name },
+      where: { companyId_name: { companyId: 'default', name } },
       update: {},
-      create: { name },
+      create: { companyId: 'default', name },
     });
   }
 

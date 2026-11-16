@@ -46,9 +46,11 @@ enum BankTxnType {
 }
 
 model Account {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id       String      @id @default(cuid())
-  code     String      @unique
-  name     String      @unique
+  code     String
+  name     String
   type     AccountType
   category String
   isSystem Boolean     @default(false)
@@ -57,19 +59,27 @@ model Account {
   journalLines JournalLine[]
   budgetLines  BudgetLine[]
 
+  @@unique([companyId, code])
+  @@unique([companyId, name])
   @@index([type])
   @@index([category])
+  @@index([companyId])
 }
 
 model JournalEntry {
-  id     String        @id @default(cuid())
-  date   DateTime
-  memo   String?
-  status JournalStatus @default(PENDING)
-  lines  JournalLine[]
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String        @id @default(cuid())
+  date      DateTime
+  memo      String?
+  status    JournalStatus @default(PENDING)
+  isLocked  Boolean       @default(false)
+  lockedAt  DateTime?
+  lines     JournalLine[]
 
   @@index([status])
   @@index([date])
+  @@index([companyId])
 }
 
 model JournalLine {
@@ -87,24 +97,32 @@ model JournalLine {
 }
 
 model Customer {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id    String  @id @default(cuid())
   name  String
   email String?
   phone String?
 
   invoices SalesInvoice[]
+  @@index([companyId])
 }
 
 model Vendor {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id    String  @id @default(cuid())
   name  String
   email String?
   phone String?
 
   bills PurchaseBill[]
+  @@index([companyId])
 }
 
 model Item {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id            String  @id @default(cuid())
   name          String
   sku           String?
@@ -113,12 +131,15 @@ model Item {
   stockQuantity Int     @default(0)
 
   invoiceLines InvoiceLine[]
+  @@index([companyId])
 }
 
 model SalesInvoice {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id            String        @id @default(cuid())
   customerId    String
-  invoiceNumber String        @unique
+  invoiceNumber String
   date          DateTime
   dueDate       DateTime
   status        InvoiceStatus @default(DRAFT)
@@ -132,6 +153,7 @@ model SalesInvoice {
   @@index([customerId])
   @@index([status])
   @@index([dueDate])
+  @@index([companyId])
 }
 
 model InvoiceLine {
@@ -151,9 +173,11 @@ model InvoiceLine {
 }
 
 model PurchaseBill {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id          String     @id @default(cuid())
   vendorId    String
-  billNumber  String     @unique
+  billNumber  String
   date        DateTime
   dueDate     DateTime
   status      BillStatus @default(DRAFT)
@@ -170,6 +194,7 @@ model PurchaseBill {
   @@index([vendorId])
   @@index([status])
   @@index([dueDate])
+  @@index([companyId])
 }
 
 model BillLine {
@@ -186,6 +211,8 @@ model BillLine {
 }
 
 model BankTransaction {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id               String        @id @default(cuid())
   date             DateTime
   description      String
@@ -202,9 +229,12 @@ model BankTransaction {
   @@index([date])
   @@index([matchedInvoiceId])
   @@index([matchedBillId])
+  @@index([companyId])
 }
 
 model Employee {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id                 String  @id @default(cuid())
   name               String
   email              String?
@@ -213,9 +243,12 @@ model Employee {
   transportAllowance Decimal @default(0)
   isActive           Boolean @default(true)
   expenses           Expense[]
+  @@index([companyId])
 }
 
 model PayrollRun {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id           String  @id @default(cuid())
   month        String
   year         Int
@@ -226,16 +259,24 @@ model PayrollRun {
   totalPension Decimal @default(0)
   totalNhf     Decimal @default(0)
 
-  @@unique([month, year])
+  @@unique([companyId, month, year])
+  @@index([companyId])
 }
 
 model ExpenseCategory {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id       String    @id @default(cuid())
-  name     String    @unique
+  name     String
   expenses Expense[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 model Expense {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id             String  @id @default(cuid())
   date           DateTime
   description    String
@@ -252,9 +293,12 @@ model Expense {
   @@index([status])
   @@index([categoryId])
   @@index([employeeId])
+  @@index([companyId])
 }
 
 model FixedAsset {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id                      String    @id @default(cuid())
   name                    String
   category                String
@@ -265,9 +309,12 @@ model FixedAsset {
   accumulatedDepreciation Decimal   @default(0)
   isDisposed              Boolean   @default(false)
   disposalDate            DateTime?
+  @@index([companyId])
 }
 
 model Budget {
+  companyId String @default("default")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id         String       @id @default(cuid())
   name       String
   fiscalYear Int
@@ -275,6 +322,7 @@ model Budget {
   endDate    DateTime
   status     String       @default("ACTIVE")
   lines      BudgetLine[]
+  @@index([companyId])
 }
 
 model BudgetLine {
@@ -289,4 +337,189 @@ model BudgetLine {
 
   @@index([budgetId])
   @@index([accountId])
+}
+
+model BusinessProfile {
+  companyId         String   @unique @default("default")
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  name              String   @default("")
+  address           String   @default("")
+  phone             String   @default("")
+  email             String   @default("")
+  logoUrl           String?
+  currency          String   @default("NGN")
+  fiscalYearStart   String   @default("January")
+  vatRate           Decimal  @default(7.5)
+  whtRateCompany    Decimal  @default(10)
+  whtRateIndividual Decimal  @default(5)
+  driveConnected    Boolean  @default(false)
+  driveRefreshToken String?
+  driveSyncSchedule String   @default("MANUAL")
+  updatedAt         DateTime @updatedAt
+}
+
+model Company {
+  id        String   @id
+  name      String
+  slug      String?  @unique
+  logo      String?
+  metadata  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts         Account[]
+  journalEntries   JournalEntry[]
+  customers        Customer[]
+  vendors          Vendor[]
+  items            Item[]
+  salesInvoices    SalesInvoice[]
+  purchaseBills    PurchaseBill[]
+  bankTransactions BankTransaction[]
+  employees        Employee[]
+  payrollRuns      PayrollRun[]
+  fixedAssets      FixedAsset[]
+  expenses         Expense[]
+  expenseCategories ExpenseCategory[]
+  budgets          Budget[]
+  businessProfile  BusinessProfile?
+  members          Member[]
+  invitations      Invitation[]
+  documents        Document[]
+  auditLogs        AuditLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Better Auth (Google OAuth only — no password hashes)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions    Session[]
+  accounts    AuthAccount[]
+  members     Member[]
+  invitations Invitation[]
+}
+
+model Session {
+  id                   String   @id
+  expiresAt            DateTime
+  token                String   @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  activeOrganizationId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// OAuth provider accounts (named AuthAccount to avoid the ledger Account).
+model AuthAccount {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Member {
+  id             String   @id
+  organizationId String
+  userId         String
+  role           String
+  createdAt      DateTime @default(now())
+
+  organization Company @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String   @id
+  organizationId String
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  inviterId      String
+
+  organization Company @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter      User    @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  companyId     String   @default("default")
+  filename      String
+  originalName  String
+  mimeType      String
+  filePath      String
+  uploadedAt    DateTime @default(now())
+  status        String   @default("PENDING")
+  source        String   @default("OCR")
+  extractedData Json?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String   @default("default")
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([action])
+  @@index([entityType])
 }

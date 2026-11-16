@@ -1,7 +1,9 @@
 /** Shared core-engine access for the accounting pages. */
 
+import { CORE_ORIGIN } from './auth-client.ts'
+
 /** Browser origin of microbalance-core. */
-export const CORE_URL = 'http://localhost:3001'
+export const CORE_URL = CORE_ORIGIN
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'
 
@@ -392,6 +394,35 @@ export interface BudgetVsActual {
   totalVariance: string
 }
 
+export interface BusinessProfile {
+  id: string
+  name: string
+  address: string
+  phone: string
+  email: string
+  logoUrl: string | null
+  currency: string
+  fiscalYearStart: string
+  vatRate: string
+  whtRateCompany: string
+  whtRateIndividual: string
+  driveConnected: boolean
+  driveSyncSchedule: string
+  updatedAt: string
+}
+
+export interface BusinessProfileInput {
+  name: string
+  address: string
+  phone: string
+  email: string
+  currency: string
+  fiscalYearStart: string
+  vatRate: string
+  whtRateCompany: string
+  whtRateIndividual: string
+}
+
 interface CoreEnvelope {
   action?: string
   data?: unknown
@@ -409,6 +440,7 @@ interface CoreEnvelope {
 export async function callCore<T>(action: string, payload: unknown = {}): Promise<T> {
   const response = await fetch(`${CORE_URL}/api/ai-intent`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, payload }),
   })
@@ -682,6 +714,16 @@ export function loadBudgetVsActual(budgetId: string): Promise<BudgetVsActual> {
 /** Delete a budget and its lines. */
 export function deleteBudget(budgetId: string): Promise<{ deleted: boolean }> {
   return callCore('DELETE_BUDGET', { budgetId })
+}
+
+/** The single business profile, or null when none has been saved. */
+export function loadBusinessProfile(): Promise<BusinessProfile | null> {
+  return callCore<BusinessProfile | null>('GET_BUSINESS_PROFILE')
+}
+
+/** Create or update the business profile. */
+export function updateBusinessProfile(input: BusinessProfileInput): Promise<BusinessProfile> {
+  return callCore<BusinessProfile>('UPDATE_BUSINESS_PROFILE', input)
 }
 
 /** Format a core decimal string as Naira. */

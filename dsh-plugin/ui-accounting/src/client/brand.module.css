@@ -2,7 +2,9 @@
 
 .mark {
   display: block;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   object-fit: contain;
 }
 

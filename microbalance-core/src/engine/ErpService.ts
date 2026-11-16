@@ -4,7 +4,8 @@ import { prisma } from '../lib/prisma.js';
 import { LedgerError } from './errors.js';
 import { assertPrecision, money, toDecimal } from './money.js';
 import { addDays, daysBetween, parseDate } from './dates.js';
-import { LedgerEngine } from './LedgerEngine.js';
+import { LedgerEngine, ledgerFor } from './LedgerEngine.js';
+import { companyPrisma } from '../lib/tenancy.js';
 
 export interface InvoiceItemInput {
   itemId?: string;
@@ -432,7 +433,7 @@ export class ErpService {
 
   /** WHT withheld from vendor bills (proposed + posted). */
   async getWhtSummary() {
-    const wht = await this.db.account.findUnique({ where: { name: 'WHT Payable' } });
+    const wht = await this.db.account.findFirst({ where: { name: 'WHT Payable' } });
     if (!wht) return { whtPayable: money(0) };
     const lines = await this.db.journalLine.findMany({ where: { accountId: wht.id } });
     const total = lines.reduce(
@@ -467,7 +468,7 @@ export class ErpService {
         throw new LedgerError('VALIDATION', 'Bill total must be greater than zero');
       }
 
-      const expense = await tx.account.findUnique({ where: { name: 'Office Supplies Expense' } })
+      const expense = await tx.account.findFirst({ where: { name: 'Office Supplies Expense' } })
         ?? await tx.account.findFirst({ where: { type: 'EXPENSE' }, orderBy: { code: 'asc' } });
       if (!expense) {
         throw new LedgerError('NOT_FOUND', 'No expense account is configured for bills');
@@ -780,6 +781,88 @@ export class ErpService {
       return { ...result, journal };
     }
     return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Business profile
+  // ---------------------------------------------------------------------------
+
+  async getBusinessProfile() {
+    const profile = await this.db.businessProfile.findFirst();
+    if (!profile) return null;
+    // Never expose the Drive refresh token to the browser.
+    const { driveRefreshToken, ...safe } = profile;
+    return {
+      ...safe,
+      driveConnected: profile.driveConnected && driveRefreshToken !== null,
+    };
+  }
+
+  async updateBusinessProfile(input: {
+    name?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    logoUrl?: string;
+    currency?: string;
+    fiscalYearStart?: string;
+    vatRate?: Prisma.Decimal.Value;
+    whtRateCompany?: Prisma.Decimal.Value;
+    whtRateIndividual?: Prisma.Decimal.Value;
+  }) {
+    const currency = input.currency ?? 'NGN';
+    if (!['NGN', 'USD', 'GBP'].includes(currency)) {
+      throw new LedgerError('VALIDATION', 'currency must be NGN, USD or GBP');
+    }
+
+    const rate = (
+      value: Prisma.Decimal.Value | undefined,
+      label: string,
+      fallback: string,
+    ): Prisma.Decimal => {
+      const decimal = value === undefined
+        ? new Prisma.Decimal(fallback)
+        : toDecimal(value, label);
+      if (decimal.isNegative() || decimal.gt(100)) {
+        throw new LedgerError('VALIDATION', `${label} must be between 0 and 100`);
+      }
+      return decimal;
+    };
+
+    const vatRate = rate(input.vatRate, 'VAT rate', '7.5');
+    const whtRateCompany = rate(input.whtRateCompany, 'company WHT rate', '10');
+    const whtRateIndividual = rate(input.whtRateIndividual, 'individual WHT rate', '5');
+
+    const data: Record<string, unknown> = {};
+    if (input.name !== undefined) data.name = input.name.trim();
+    if (input.address !== undefined) data.address = input.address.trim();
+    if (input.phone !== undefined) data.phone = input.phone.trim();
+    if (input.email !== undefined) data.email = input.email.trim();
+    if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl.trim() || null;
+    if (input.currency !== undefined) data.currency = currency;
+    if (input.fiscalYearStart !== undefined) data.fiscalYearStart = input.fiscalYearStart;
+    if (input.vatRate !== undefined) data.vatRate = vatRate;
+    if (input.whtRateCompany !== undefined) data.whtRateCompany = whtRateCompany;
+    if (input.whtRateIndividual !== undefined) data.whtRateIndividual = whtRateIndividual;
+
+    const existing = await this.db.businessProfile.findFirst();
+    if (existing) {
+      return this.db.businessProfile.update({ where: { id: existing.id }, data });
+    }
+    return this.db.businessProfile.create({
+      data: {
+        name: input.name?.trim() ?? '',
+        address: input.address?.trim() ?? '',
+        phone: input.phone?.trim() ?? '',
+        email: input.email?.trim() ?? '',
+        logoUrl: input.logoUrl?.trim() || null,
+        currency,
+        fiscalYearStart: input.fiscalYearStart ?? 'January',
+        vatRate,
+        whtRateCompany,
+        whtRateIndividual,
+      },
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1158,11 +1241,9 @@ export class ErpService {
   async createExpenseCategory(input: { name: string }) {
     const name = input.name.trim();
     if (name === '') throw new LedgerError('VALIDATION', 'Category name is required');
-    return this.db.expenseCategory.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
+    const existing = await this.db.expenseCategory.findFirst({ where: { name } });
+    if (existing) return existing;
+    return this.db.expenseCategory.create({ data: { name } });
   }
 
   async getExpenses() {
@@ -1217,10 +1298,10 @@ export class ErpService {
         employeeId = employee.id;
       }
 
-      const expenseAccount = await tx.account.findUnique({
+      const expenseAccount = await tx.account.findFirst({
         where: { name: `${category.name} Expense` },
       })
-        ?? await tx.account.findUnique({ where: { name: 'Office Supplies Expense' } })
+        ?? await tx.account.findFirst({ where: { name: 'Office Supplies Expense' } })
         ?? await tx.account.findFirst({ where: { type: 'EXPENSE' }, orderBy: { code: 'asc' } });
       if (!expenseAccount) throw new LedgerError('NOT_FOUND', 'No expense account is configured');
 
@@ -1384,8 +1465,8 @@ export class ErpService {
     const month = String(monthNumber).padStart(2, '0');
 
     return this.db.$transaction(async (tx) => {
-      const existing = await tx.payrollRun.findUnique({
-        where: { month_year: { month, year } },
+      const existing = await tx.payrollRun.findFirst({
+        where: { month, year },
       });
       if (existing) {
         throw new LedgerError('STATE', `Payroll for ${month}/${year} has already been run`);
@@ -1517,8 +1598,8 @@ export class ErpService {
   /** VAT and WHT position from their liability accounts (proposed + posted). */
   async getTaxSummary() {
     const [vat, wht] = await Promise.all([
-      this.db.account.findUnique({ where: { name: 'VAT Payable' } }),
-      this.db.account.findUnique({ where: { name: 'WHT Payable' } }),
+      this.db.account.findFirst({ where: { name: 'VAT Payable' } }),
+      this.db.account.findFirst({ where: { name: 'WHT Payable' } }),
     ]);
 
     const balanceOf = async (accountId?: string) => {
@@ -1701,7 +1782,7 @@ export class ErpService {
     name: string,
     expectedType?: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE',
   ) {
-    const account = await db.account.findUnique({ where: { name } });
+    const account = await db.account.findFirst({ where: { name } });
     if (!account) {
       throw new LedgerError('NOT_FOUND', `Required account "${name}" is not configured`);
     }
@@ -1837,3 +1918,7 @@ export class ErpService {
 }
 
 export const erpService = new ErpService();
+
+/** An ERP service confined to one company (for request handlers). */
+export const erpFor = (companyId: string): ErpService =>
+  new ErpService(ledgerFor(companyId), companyPrisma(companyId));
