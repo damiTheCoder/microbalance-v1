@@ -110,6 +110,53 @@ const budgetIdSchema = z.object({
   budgetId: z.string().min(1),
 });
 
+const createEquitySchema = z.object({
+  type: z.enum(['SHARE_CAPITAL', 'RETAINED_EARNINGS_ADJUSTMENT']),
+  amount: decimalish,
+  date: isoDate.optional(),
+  description: z.string().optional(),
+});
+
+const dividendSchema = z.object({
+  amount: decimalish,
+  date: isoDate.optional(),
+  description: z.string().optional(),
+});
+
+const createLoanSchema = z.object({
+  lenderName: z.string().min(1),
+  principalAmount: decimalish,
+  interestRate: decimalish,
+  startDate: isoDate.optional(),
+  termMonths: z.coerce.number().int().min(1).max(600),
+});
+
+const loanRepaymentSchema = z.object({
+  loanId: z.string().min(1),
+  amount: decimalish,
+  bankAccountId: z.string().min(1),
+  date: isoDate.optional(),
+});
+
+const createProjectSchema = z.object({
+  name: z.string().min(1),
+  clientId: z.string().min(1).optional(),
+  budget: decimalish,
+  startDate: isoDate.optional(),
+  endDate: isoDate.optional(),
+  status: z.enum(['ACTIVE', 'COMPLETED']).optional(),
+});
+
+const projectTxnSchema = z.object({
+  projectId: z.string().min(1),
+  type: z.enum(['REVENUE', 'EXPENSE']),
+  description: z.string().min(1),
+  amount: decimalish,
+  date: isoDate.optional(),
+});
+
+const projectIdSchema = z.object({ projectId: z.string().min(1) });
+
 const auditQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(1000).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).optional().default(50),
@@ -415,6 +462,58 @@ export async function apiRoutes(app: FastifyInstance): Promise<void> {
       case 'DELETE_BUDGET': {
         const input = budgetIdSchema.parse(payload);
         return { action: body.action, data: await erp.deleteBudget(input.budgetId) };
+      }
+
+      case 'CREATE_EQUITY': {
+        const input = createEquitySchema.parse(payload);
+        return { action: body.action, data: await erp.createEquityTransaction(input) };
+      }
+
+      case 'RECORD_DIVIDEND': {
+        const input = dividendSchema.parse(payload);
+        return { action: body.action, data: await erp.recordDividend(input) };
+      }
+
+      case 'CREATE_LOAN': {
+        const input = createLoanSchema.parse(payload);
+        return { action: body.action, data: await erp.createLoan(input) };
+      }
+
+      case 'GET_LOANS':
+        return { action: body.action, data: await erp.getLoans() };
+
+      case 'RECORD_LOAN_REPAYMENT': {
+        const input = loanRepaymentSchema.parse(payload);
+        return {
+          action: body.action,
+          data: await erp.recordLoanRepayment(
+            input.loanId,
+            input.amount,
+            input.bankAccountId,
+            input.date,
+          ),
+        };
+      }
+
+      case 'GET_EQUITY_SUMMARY':
+        return { action: body.action, data: await erp.getEquitySummary() };
+
+      case 'CREATE_PROJECT': {
+        const input = createProjectSchema.parse(payload);
+        return { action: body.action, data: await erp.createProject(input) };
+      }
+
+      case 'GET_PROJECTS':
+        return { action: body.action, data: await erp.getProjects() };
+
+      case 'ADD_PROJECT_TRANSACTION': {
+        const input = projectTxnSchema.parse(payload);
+        return { action: body.action, data: await erp.addProjectTransaction(input) };
+      }
+
+      case 'GET_PROJECT_PROFITABILITY': {
+        const input = projectIdSchema.parse(payload);
+        return { action: body.action, data: await erp.getProjectProfitability(input.projectId) };
       }
 
       case 'GET_AUDIT_LOG': {

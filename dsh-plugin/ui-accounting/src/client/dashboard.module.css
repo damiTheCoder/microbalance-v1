@@ -164,7 +164,7 @@
 }
 
 .dotExpenses {
-  background: #fca5a5;
+  background: #dbeafe;
 }
 
 .chartWrap {
@@ -291,5 +291,28 @@
 
   .legendKeys {
     display: none;
+  }
+}
+
+/* Mobile: same inset surface and independent scrolling as the other pages. */
+.page,
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .page {
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    min-height: calc(100% - 16px);
+    margin: 8px;
+    padding: 18px 14px 36px;
+    border-radius: 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 }

@@ -36,6 +36,8 @@ import { withAuth } from './AuthGate.tsx'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
 import { LensButton } from './Lens.tsx'
+import { EquityPage, LoansPage } from './EquityLoans.tsx'
+import { ProjectsPage, ProjectProfitabilityPage } from './Projects.tsx'
 import { TrialBalancePage } from './TrialBalance.tsx'
 import {
   BarChartIcon,
@@ -270,6 +272,34 @@ const PANELS: readonly PanelDefinition[] = [
     order: 67,
     Page: PeriodLockPage,
     Icon: HourglassIcon,
+  },
+  {
+    id: 'equity' as MainPanelId,
+    label: 'Equity & Financing::Equity',
+    order: 68,
+    Page: EquityPage,
+    Icon: BuildingIcon,
+  },
+  {
+    id: 'loans' as MainPanelId,
+    label: 'Equity & Financing::Loans',
+    order: 69,
+    Page: LoansPage,
+    Icon: LandmarkIcon,
+  },
+  {
+    id: 'projects' as MainPanelId,
+    label: 'Projects::Project List',
+    order: 70,
+    Page: ProjectsPage,
+    Icon: TargetIcon,
+  },
+  {
+    id: 'project-profitability' as MainPanelId,
+    label: 'Projects::Profitability',
+    order: 71,
+    Page: ProjectProfitabilityPage,
+    Icon: BarChartIcon,
   },
   {
     id: 'profit-loss' as MainPanelId,

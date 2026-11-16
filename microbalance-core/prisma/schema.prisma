@@ -105,6 +105,7 @@ model Customer {
   phone String?
 
   invoices SalesInvoice[]
+  projects Project[]
   @@index([companyId])
 }
 
@@ -387,6 +388,9 @@ model Company {
   invitations      Invitation[]
   documents        Document[]
   auditLogs        AuditLog[]
+  equityTransactions EquityTransaction[]
+  loans            Loan[]
+  projects         Project[]
 }
 
 // ---------------------------------------------------------------------------
@@ -522,4 +526,87 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([action])
   @@index([entityType])
+}
+
+model EquityTransaction {
+  id          String   @id @default(cuid())
+  companyId   String   @default("default")
+  type        String
+  amount      Decimal
+  date        DateTime
+  description String
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([type])
+}
+
+model Loan {
+  id              String   @id @default(cuid())
+  companyId       String   @default("default")
+  lenderName      String
+  principalAmount Decimal
+  interestRate    Decimal
+  startDate       DateTime
+  termMonths      Int
+  balance         Decimal
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+
+  company    Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  repayments LoanRepayment[]
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model LoanRepayment {
+  id            String   @id @default(cuid())
+  loanId        String
+  date          DateTime
+  principalPaid Decimal
+  interestPaid  Decimal
+  totalPaid     Decimal
+  createdAt     DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+}
+
+model Project {
+  id        String    @id @default(cuid())
+  companyId String    @default("default")
+  name      String
+  clientId  String?
+  budget    Decimal   @default(0)
+  startDate DateTime
+  endDate   DateTime?
+  status    String    @default("ACTIVE")
+  createdAt DateTime  @default(now())
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client      Customer?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  transactions ProjectTransaction[]
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model ProjectTransaction {
+  id          String   @id @default(cuid())
+  projectId   String
+  date        DateTime
+  description String
+  amount      Decimal
+  type        String
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([type])
 }

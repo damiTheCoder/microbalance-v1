@@ -1,6 +1,7 @@
 node_modules/
 dist/
-lib/
+/microbalance-core/lib/
+/dsh-plugin/*/lib/
 .env
 .env.local
 *.db

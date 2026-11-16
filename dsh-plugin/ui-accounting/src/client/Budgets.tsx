@@ -13,6 +13,7 @@ import {
   type BudgetVsActual,
 } from './core.ts'
 import { useTrialBalance } from './useTrialBalance.ts'
+import { CHART_COLORS, chartCursor, chartTooltipStyle } from './chartTheme.ts'
 import css from './accounting.module.css'
 
 interface DraftLine {
@@ -389,13 +390,17 @@ export function BudgetVsActualPage() {
             <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(17, 24, 39, 0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-15} height={60} textAnchor="end" />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={value => formatNaira(Number(value))} />
+                  <Tooltip
+                    formatter={value => formatNaira(Number(value))}
+                    cursor={chartCursor}
+                    contentStyle={chartTooltipStyle}
+                  />
                   <Legend />
-                  <Bar dataKey="Budgeted" fill="#6b7280" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="Actual" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Budgeted" fill={CHART_COLORS.secondary} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Actual" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -1020,6 +1020,418 @@ export class ErpService {
     return { deleted: true, id: budgetId };
   }
 
+
+  // ---------------------------------------------------------------------------
+  // Equity, loans and financing
+  // ---------------------------------------------------------------------------
+
+  async createEquityTransaction(input: {
+    type: 'SHARE_CAPITAL' | 'RETAINED_EARNINGS_ADJUSTMENT';
+    amount: Prisma.Decimal.Value;
+    date?: string | Date;
+    description?: string;
+  }) {
+    const amount = toDecimal(input.amount, 'equity amount');
+    assertPrecision(amount, 'Equity amount');
+    if (amount.lte(0)) throw new LedgerError('VALIDATION', 'Equity amount must be greater than zero');
+    const date = parseDate(input.date, 'equity date');
+    const label = input.description?.trim() || input.type.replace(/_/g, ' ').toLowerCase();
+
+    return this.db.$transaction(async (tx) => {
+      const cash = await this.requireAccount(tx, 'Cash', 'ASSET');
+      const creditAccount = await this.requireAccount(
+        tx,
+        input.type === 'SHARE_CAPITAL' ? 'Share Capital' : 'Retained Earnings',
+        'EQUITY',
+      );
+
+      const equity = await tx.equityTransaction.create({
+        data: { type: input.type, amount, date, description: label },
+      });
+      const journal = await this.ledger.proposeJournal(
+        {
+          date,
+          memo: `Equity: ${label}`,
+          lines: [
+            { accountId: cash.id, debit: amount },
+            { accountId: creditAccount.id, credit: amount },
+          ],
+        },
+        tx,
+      );
+      return { equity, journal };
+    });
+  }
+
+  async recordDividend(input: {
+    amount: Prisma.Decimal.Value;
+    date?: string | Date;
+    description?: string;
+  }) {
+    const amount = toDecimal(input.amount, 'dividend amount');
+    assertPrecision(amount, 'Dividend amount');
+    if (amount.lte(0)) throw new LedgerError('VALIDATION', 'Dividend amount must be greater than zero');
+    const date = parseDate(input.date, 'dividend date');
+    const label = input.description?.trim() || 'Dividend declared';
+
+    return this.db.$transaction(async (tx) => {
+      const cash = await this.requireAccount(tx, 'Cash', 'ASSET');
+      const retained = await this.requireAccount(tx, 'Retained Earnings', 'EQUITY');
+
+      const equity = await tx.equityTransaction.create({
+        data: { type: 'DIVIDEND', amount, date, description: label },
+      });
+      const journal = await this.ledger.proposeJournal(
+        {
+          date,
+          memo: `Dividend: ${label}`,
+          lines: [
+            { accountId: retained.id, debit: amount },
+            { accountId: cash.id, credit: amount },
+          ],
+        },
+        tx,
+      );
+      return { equity, journal };
+    });
+  }
+
+  async createLoan(input: {
+    lenderName: string;
+    principalAmount: Prisma.Decimal.Value;
+    interestRate: Prisma.Decimal.Value;
+    startDate?: string | Date;
+    termMonths: number;
+  }) {
+    const lenderName = input.lenderName.trim();
+    if (lenderName === '') throw new LedgerError('VALIDATION', 'Lender name is required');
+    const principal = toDecimal(input.principalAmount, 'loan principal');
+    assertPrecision(principal, 'Loan principal');
+    if (principal.lte(0)) throw new LedgerError('VALIDATION', 'Loan principal must be greater than zero');
+    const rate = toDecimal(input.interestRate, 'interest rate');
+    if (rate.isNegative() || rate.gt(100)) {
+      throw new LedgerError('VALIDATION', 'Interest rate must be between 0 and 100');
+    }
+    const termMonths = Math.trunc(input.termMonths);
+    if (!Number.isInteger(termMonths) || termMonths < 1) {
+      throw new LedgerError('VALIDATION', 'termMonths must be a positive integer');
+    }
+    const startDate = parseDate(input.startDate, 'loan start date');
+
+    return this.db.$transaction(async (tx) => {
+      const cash = await this.requireAccount(tx, 'Cash', 'ASSET');
+      const payable = await this.requireAccount(tx, 'Long-term Loans', 'LIABILITY');
+
+      const loan = await tx.loan.create({
+        data: {
+          lenderName,
+          principalAmount: principal,
+          interestRate: rate,
+          startDate,
+          termMonths,
+          balance: principal,
+          status: 'ACTIVE',
+        },
+      });
+      const journal = await this.ledger.proposeJournal(
+        {
+          date: startDate,
+          memo: `Loan received from ${lenderName}`,
+          lines: [
+            { accountId: cash.id, debit: principal },
+            { accountId: payable.id, credit: principal },
+          ],
+        },
+        tx,
+      );
+      return { loan, journal };
+    });
+  }
+
+  async recordLoanRepayment(
+    loanId: string,
+    amountInput: Prisma.Decimal.Value,
+    bankAccountId: string,
+    dateInput?: string | Date,
+  ) {
+    const amount = toDecimal(amountInput, 'repayment amount');
+    assertPrecision(amount, 'Repayment amount');
+    if (amount.lte(0)) throw new LedgerError('VALIDATION', 'Repayment amount must be greater than zero');
+    const date = parseDate(dateInput, 'repayment date');
+
+    return this.db.$transaction(async (tx) => {
+      const loan = await tx.loan.findUnique({ where: { id: loanId } });
+      if (!loan) throw new LedgerError('NOT_FOUND', `Loan ${loanId} not found`);
+      if (loan.status === 'PAID') throw new LedgerError('STATE', 'Loan is already fully paid');
+
+      const bank = await tx.account.findUnique({ where: { id: bankAccountId } });
+      if (!bank) throw new LedgerError('NOT_FOUND', `Account ${bankAccountId} not found`);
+      if (bank.type !== 'ASSET') throw new LedgerError('VALIDATION', 'Bank account must be an ASSET account');
+
+      const payable = await this.requireAccount(tx, 'Long-term Loans', 'LIABILITY');
+      const interestAccount = await this.requireAccount(tx, 'Interest Expense', 'EXPENSE');
+
+      const balance = new Prisma.Decimal(loan.balance);
+      const monthlyInterest = balance
+        .times(new Prisma.Decimal(loan.interestRate))
+        .div(100)
+        .div(12)
+        .toDecimalPlaces(2);
+
+      let interestPaid = amount.lt(monthlyInterest) ? amount : monthlyInterest;
+      let principalPaid = amount.minus(interestPaid);
+      if (principalPaid.gt(balance)) {
+        principalPaid = balance;
+        interestPaid = amount.minus(principalPaid);
+      }
+      const totalPaid = principalPaid.plus(interestPaid);
+      const newBalance = balance.minus(principalPaid);
+
+      const repayment = await tx.loanRepayment.create({
+        data: { loanId: loan.id, date, principalPaid, interestPaid, totalPaid },
+      });
+      const updated = await tx.loan.update({
+        where: { id: loan.id },
+        data: { balance: newBalance, status: newBalance.lte(0) ? 'PAID' : 'ACTIVE' },
+      });
+
+      const journal = await this.ledger.proposeJournal(
+        {
+          date,
+          memo: `Loan repayment - ${loan.lenderName}`,
+          lines: [
+            { accountId: payable.id, debit: principalPaid },
+            { accountId: interestAccount.id, debit: interestPaid },
+            { accountId: bank.id, credit: totalPaid },
+          ],
+        },
+        tx,
+      );
+      return { loan: updated, repayment, journal };
+    });
+  }
+
+  async getLoans() {
+    const loans = await this.db.loan.findMany({
+      include: { repayments: { orderBy: { date: 'desc' } } },
+      orderBy: { startDate: 'desc' },
+    });
+    return loans.map((loan) => ({
+      id: loan.id,
+      lenderName: loan.lenderName,
+      principalAmount: money(loan.principalAmount),
+      interestRate: loan.interestRate.toString(),
+      startDate: loan.startDate.toISOString(),
+      termMonths: loan.termMonths,
+      balance: money(loan.balance),
+      status: loan.status,
+      repayments: loan.repayments.length,
+    }));
+  }
+
+  async getEquitySummary() {
+    const accounts = await this.db.account.findMany({
+      where: { name: { in: ['Share Capital', 'Retained Earnings', 'Dividends'] } },
+    });
+    const balanceOf = (name: string): Prisma.Decimal => {
+      const account = accounts.find((entry) => entry.name === name);
+      return account ? new Prisma.Decimal(account.balance) : new Prisma.Decimal(0);
+    };
+
+    const shareCapital = balanceOf('Share Capital');
+    const retainedEarnings = balanceOf('Retained Earnings');
+    const dividends = balanceOf('Dividends');
+
+    const transactions = await this.db.equityTransaction.findMany({
+      orderBy: { date: 'desc' },
+      take: 25,
+    });
+    const dividendTotal = transactions
+      .filter((entry) => entry.type === 'DIVIDEND')
+      .reduce((sum, entry) => sum.plus(entry.amount), new Prisma.Decimal(0));
+
+    return {
+      shareCapital: money(shareCapital),
+      retainedEarnings: money(retainedEarnings),
+      dividends: money(dividends.gt(0) ? dividends : dividendTotal),
+      totalEquity: money(shareCapital.plus(retainedEarnings).minus(dividends.gt(0) ? dividends : dividendTotal)),
+      transactions: transactions.map((entry) => ({
+        id: entry.id,
+        type: entry.type,
+        amount: money(entry.amount),
+        date: entry.date.toISOString(),
+        description: entry.description,
+      })),
+    };
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // Projects and cost accounting
+  // ---------------------------------------------------------------------------
+
+  async createProject(input: {
+    name: string;
+    clientId?: string;
+    budget: Prisma.Decimal.Value;
+    startDate?: string | Date;
+    endDate?: string | Date;
+    status?: 'ACTIVE' | 'COMPLETED';
+  }) {
+    const name = input.name.trim();
+    if (name === '') throw new LedgerError('VALIDATION', 'Project name is required');
+    const budget = toDecimal(input.budget, 'project budget');
+    assertPrecision(budget, 'Project budget');
+    if (budget.isNegative()) throw new LedgerError('VALIDATION', 'Budget must not be negative');
+    const startDate = parseDate(input.startDate, 'project start date');
+    const endDate = input.endDate === undefined || input.endDate === null || input.endDate === ''
+      ? null
+      : parseDate(input.endDate, 'project end date');
+    if (endDate !== null && endDate.getTime() < startDate.getTime()) {
+      throw new LedgerError('VALIDATION', 'End date must be on or after the start date');
+    }
+
+    if (input.clientId !== undefined && input.clientId !== '') {
+      const client = await this.db.customer.findUnique({ where: { id: input.clientId } });
+      if (!client) throw new LedgerError('NOT_FOUND', `Customer ${input.clientId} not found`);
+    }
+
+    return this.db.project.create({
+      data: {
+        name,
+        clientId: input.clientId === '' ? null : input.clientId ?? null,
+        budget,
+        startDate,
+        endDate,
+        status: input.status === 'COMPLETED' ? 'COMPLETED' : 'ACTIVE',
+      },
+      include: { client: true },
+    });
+  }
+
+  async getProjects() {
+    const projects = await this.db.project.findMany({
+      include: { client: true, transactions: true },
+      orderBy: { startDate: 'desc' },
+    });
+
+    return projects.map((project) => {
+      const revenue = project.transactions
+        .filter((entry) => entry.type === 'REVENUE')
+        .reduce((sum, entry) => sum.plus(entry.amount), new Prisma.Decimal(0));
+      const expenses = project.transactions
+        .filter((entry) => entry.type === 'EXPENSE')
+        .reduce((sum, entry) => sum.plus(entry.amount), new Prisma.Decimal(0));
+      const budget = new Prisma.Decimal(project.budget);
+      const profit = revenue.minus(expenses);
+      const margin = revenue.gt(0)
+        ? profit.div(revenue).times(100).toDecimalPlaces(1)
+        : new Prisma.Decimal(0);
+
+      return {
+        id: project.id,
+        name: project.name,
+        clientId: project.clientId,
+        client: project.client?.name ?? null,
+        budget: money(budget),
+        spent: money(expenses),
+        remaining: money(budget.minus(expenses)),
+        revenue: money(revenue),
+        profit: money(profit),
+        margin: margin.toNumber(),
+        startDate: project.startDate.toISOString(),
+        endDate: project.endDate?.toISOString() ?? null,
+        status: project.status,
+        transactions: project.transactions.length,
+      };
+    });
+  }
+
+  async addProjectTransaction(input: {
+    projectId: string;
+    type: 'REVENUE' | 'EXPENSE';
+    description: string;
+    amount: Prisma.Decimal.Value;
+    date?: string | Date;
+  }) {
+    const description = input.description.trim();
+    if (description === '') throw new LedgerError('VALIDATION', 'Description is required');
+    const amount = toDecimal(input.amount, 'transaction amount');
+    assertPrecision(amount, 'Transaction amount');
+    if (amount.lte(0)) throw new LedgerError('VALIDATION', 'Amount must be greater than zero');
+    const date = parseDate(input.date, 'transaction date');
+
+    const project = await this.db.project.findUnique({ where: { id: input.projectId } });
+    if (!project) throw new LedgerError('NOT_FOUND', `Project ${input.projectId} not found`);
+
+    return this.db.projectTransaction.create({
+      data: {
+        projectId: project.id,
+        type: input.type === 'REVENUE' ? 'REVENUE' : 'EXPENSE',
+        description,
+        amount,
+        date,
+      },
+    });
+  }
+
+  async getProjectProfitability(projectId: string) {
+    const project = await this.db.project.findUnique({
+      where: { id: projectId },
+      include: { client: true, transactions: { orderBy: { date: 'asc' } } },
+    });
+    if (!project) throw new LedgerError('NOT_FOUND', `Project ${projectId} not found`);
+
+    const revenueLines = project.transactions
+      .filter((entry) => entry.type === 'REVENUE')
+      .map((entry) => ({
+        id: entry.id,
+        date: entry.date.toISOString(),
+        description: entry.description,
+        amount: money(entry.amount),
+      }));
+    const expenseLines = project.transactions
+      .filter((entry) => entry.type === 'EXPENSE')
+      .map((entry) => ({
+        id: entry.id,
+        date: entry.date.toISOString(),
+        description: entry.description,
+        amount: money(entry.amount),
+      }));
+
+    const revenue = project.transactions
+      .filter((entry) => entry.type === 'REVENUE')
+      .reduce((sum, entry) => sum.plus(entry.amount), new Prisma.Decimal(0));
+    const expenses = project.transactions
+      .filter((entry) => entry.type === 'EXPENSE')
+      .reduce((sum, entry) => sum.plus(entry.amount), new Prisma.Decimal(0));
+    const profit = revenue.minus(expenses);
+    const budget = new Prisma.Decimal(project.budget);
+    const margin = revenue.gt(0)
+      ? profit.div(revenue).times(100).toDecimalPlaces(1)
+      : new Prisma.Decimal(0);
+
+    return {
+      project: {
+        id: project.id,
+        name: project.name,
+        client: project.client?.name ?? null,
+        budget: money(budget),
+        startDate: project.startDate.toISOString(),
+        endDate: project.endDate?.toISOString() ?? null,
+        status: project.status,
+      },
+      revenueLines,
+      expenseLines,
+      totalRevenue: money(revenue),
+      totalExpenses: money(expenses),
+      profit: money(profit),
+      margin: margin.toNumber(),
+      spent: money(expenses),
+      remaining: money(budget.minus(expenses)),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Fixed assets
   // ---------------------------------------------------------------------------

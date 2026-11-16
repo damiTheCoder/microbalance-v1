@@ -38,6 +38,12 @@ const AUDIT_ACTIONS: Record<string, { action: string; entityType: string }> = {
   UPDATE_BUSINESS_PROFILE: { action: 'UPDATE', entityType: 'BusinessProfile' },
   PROPOSE_JOURNAL: { action: 'CREATE', entityType: 'Journal' },
   RECONCILE_TRANSACTION: { action: 'UPDATE', entityType: 'BankTransaction' },
+  CREATE_EQUITY: { action: 'CREATE', entityType: 'EquityTransaction' },
+  RECORD_DIVIDEND: { action: 'CREATE', entityType: 'EquityTransaction' },
+  CREATE_LOAN: { action: 'CREATE', entityType: 'Loan' },
+  CREATE_PROJECT: { action: 'CREATE', entityType: 'Project' },
+  ADD_PROJECT_TRANSACTION: { action: 'CREATE', entityType: 'ProjectTransaction' },
+  RECORD_LOAN_REPAYMENT: { action: 'CREATE', entityType: 'LoanRepayment' },
   LOCK_PERIOD: { action: 'UPDATE', entityType: 'Journal' },
   UNLOCK_PERIOD: { action: 'UPDATE', entityType: 'Journal' },
 };

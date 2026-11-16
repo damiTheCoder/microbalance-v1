@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import { formatNaira } from './core.ts'
+import { CHART_COLORS, chartAxisTick, chartCursor, chartTooltipStyle } from './chartTheme.ts'
 import { useTrialBalance } from './useTrialBalance.ts'
 import css from './dashboard.module.css'
 
@@ -139,43 +140,38 @@ export function DashboardPage() {
         <div className={css.chartWrap}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={PERFORMANCE} barGap={10} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_COLORS.grid} />
               <XAxis
                 dataKey="month"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tick={chartAxisTick}
                 dy={8}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                tick={chartAxisTick}
                 tickFormatter={compactNaira}
                 width={62}
               />
               <Tooltip
-                cursor={{ fill: '#f8fafc' }}
-                contentStyle={{
-                  borderRadius: 10,
-                  border: '1px solid #e5e7eb',
-                  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
-                  fontSize: 13,
-                }}
+                cursor={chartCursor}
+                contentStyle={chartTooltipStyle}
                 formatter={value => formatNaira(Number(value))}
               />
               <Bar
                 dataKey="revenue"
                 name="Revenue"
-                fill="#2563eb"
-                radius={[8, 8, 0, 0]}
+                fill={CHART_COLORS.primary}
+                radius={[6, 6, 0, 0]}
                 maxBarSize={38}
               />
               <Bar
                 dataKey="expenses"
                 name="Expenses"
-                fill="#fca5a5"
-                radius={[8, 8, 0, 0]}
+                fill={CHART_COLORS.secondary}
+                radius={[6, 6, 0, 0]}
                 maxBarSize={38}
               />
             </BarChart>

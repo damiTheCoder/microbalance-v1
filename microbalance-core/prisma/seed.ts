@@ -35,6 +35,7 @@ const ACCOUNTS = [
   // Equity
   { code: '3000', name: 'Share Capital', type: 'EQUITY', category: 'Equity', isSystem: true },
   { code: '3100', name: 'Retained Earnings', type: 'EQUITY', category: 'Equity', isSystem: true },
+  { code: '3200', name: 'Dividends', type: 'EQUITY', category: 'Equity', isSystem: true },
 
   // Revenue
   { code: '4000', name: 'Sales Revenue', type: 'REVENUE', category: 'Operating Revenue', isSystem: true },
@@ -57,6 +58,7 @@ const ACCOUNTS = [
   { code: '6910', name: 'Meals & Entertainment Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6920', name: 'Fuel Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
   { code: '6950', name: 'Loss on Asset Disposal', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
+  { code: '7000', name: 'Interest Expense', type: 'EXPENSE', category: 'Operating Expenses', isSystem: true },
 ] as const;
 
 const EXPENSE_CATEGORIES = [
