@@ -8,6 +8,9 @@
  * message and correct itself.
  */
 
+import { readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { CoreError, JournalEntry, JsonValue } from './types.ts'
 
 /** Core engine base URL used when no environment override is present. */
@@ -23,6 +26,38 @@ export function coreApiUrl(): string {
     process.env.CORE_API_URL ??
     DEFAULT_CORE_API_URL
   return configured.replace(/\/+$/, '')
+}
+
+/**
+ * Read `AGENT_API_TOKEN` from the core's env file. The DSH host executes tools
+ * outside the browser, so the Better Auth cookie is unavailable; this shared
+ * server-only token is the bridge to the engine's tenant-scoped guard.
+ */
+function readTokenFromEnvFile(path: string): string | undefined {
+  try {
+    const match = /^AGENT_API_TOKEN=(.*)$/m.exec(readFileSync(path, 'utf8'))
+    const token = match?.[1]?.trim().replace(/^["']|["']$/g, '')
+    return token === undefined || token === '' ? undefined : token
+  } catch {
+    return undefined
+  }
+}
+
+/** Resolve the agent token from the environment or the core env file. */
+export function agentToken(): string | undefined {
+  const direct = process.env.MICROBALANCE_AGENT_TOKEN
+  if (direct !== undefined && direct !== '') return direct
+  const candidates = [
+    process.env.MICROBALANCE_CORE_ENV,
+    join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles', 'web', 'microbalance.env'),
+    join(homedir(), 'Documents', 'Microbalance', '.env'),
+  ]
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === '') continue
+    const token = readTokenFromEnvFile(candidate)
+    if (token !== undefined) return token
+  }
+  return undefined
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -54,9 +89,13 @@ async function request<T extends JsonValue>(
   let response: Response
 
   try {
+    const token = agentToken()
     response = await fetch(`${coreApiUrl()}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(CORE_TIMEOUT_MS),
     })

@@ -1,9 +1,12 @@
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { fromNodeHeaders } from 'better-auth/node';
+import { timingSafeEqual } from 'node:crypto';
 import { apiRoutes } from './routes/api.js';
 import { authRoutes } from './routes/auth.js';
 import { landingRoutes } from './routes/landing.js';
@@ -12,6 +15,7 @@ import { auditRoutes } from './routes/audit.js';
 import { driveRoutes } from './routes/drive.js';
 import { logAudit } from './lib/audit.js';
 import { auth } from './lib/auth.js';
+import { prisma } from './lib/prisma.js';
 import { LedgerError } from './engine/errors.js';
 
 const PROTECTED_PREFIXES = ['/api/ai-intent', '/api/journals', '/api/documents', '/api/audit', '/api/drive'];
@@ -98,6 +102,44 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.addHook('preHandler', async (request, reply) => {
     const path = request.url.split('?')[0] ?? '';
     if (!PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))) return;
+
+    // The DSH host runs the MicroBalance tools out-of-browser, so the browser's
+    // Better Auth cookie never reaches those fetches. A shared, server-only
+    // token bridges the two local processes; it resolves to a fixed tenant.
+    const agentToken = process.env.AGENT_API_TOKEN;
+    if (agentToken !== undefined && agentToken !== '') {
+      const presented = request.headers.authorization ?? '';
+      const expected = `Bearer ${agentToken}`;
+      const presentedBuffer = Buffer.from(presented);
+      const expectedBuffer = Buffer.from(expected);
+      if (
+        presentedBuffer.length === expectedBuffer.length &&
+        timingSafeEqual(presentedBuffer, expectedBuffer)
+      ) {
+        const agentUserId = process.env.AGENT_USER_ID;
+        let agentCompanyId = process.env.AGENT_COMPANY_ID;
+        // Follow the human owner's most recently active organization so the
+        // agent reads the same company the UI is currently showing.
+        if (agentUserId !== undefined && agentUserId !== '') {
+          const active = await prisma.session.findFirst({
+            where: { userId: agentUserId, activeOrganizationId: { not: null } },
+            orderBy: { updatedAt: 'desc' },
+            select: { activeOrganizationId: true },
+          });
+          if (active?.activeOrganizationId !== null && active?.activeOrganizationId !== undefined) {
+            agentCompanyId = active.activeOrganizationId;
+          }
+        }
+        if (agentCompanyId === undefined || agentCompanyId === '') {
+          return reply
+            .code(403)
+            .send({ error: 'Agent tenant is not configured', code: 'NO_ORGANIZATION' });
+        }
+        request.companyId = agentCompanyId;
+        request.userId = agentUserId ?? 'microbalance-agent';
+        return;
+      }
+    }
 
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
@@ -221,6 +263,11 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(multipart, {
     limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  });
+  await app.register(fastifyStatic, {
+    root: fileURLToPath(new URL('../public', import.meta.url)),
+    prefix: '/',
+    decorateReply: false,
   });
   await app.register(landingRoutes);
   await app.register(authRoutes);

@@ -15,15 +15,18 @@ function appUrl(request: FastifyRequest): string {
 }
 
 /**
- * Public landing page. Signed-in visitors skip it and land in the app.
+ * Public landing page. Signed-in visitors skip it and land in the app unless
+ * they explicitly asked for the landing page (`/?home=1`, used by the sidebar
+ * brand link so "go home" never bounces straight back into the app).
  */
 export async function landingRoutes(app: FastifyInstance): Promise<void> {
   app.get('/', async (request, reply) => {
+    const stay = (request.query as { home?: string } | undefined)?.home === '1';
     const session = await auth.api.getSession({
       headers: fromNodeHeaders(request.headers),
     });
 
-    if (session) {
+    if (session !== null && session !== undefined && !stay) {
       return reply.redirect(appUrl(request), 302);
     }
 

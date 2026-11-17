@@ -14,3 +14,12 @@
   letter-spacing: -0.015em;
   white-space: nowrap;
 }
+
+.clickable {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.clickable:hover {
+  opacity: 0.78;
+}

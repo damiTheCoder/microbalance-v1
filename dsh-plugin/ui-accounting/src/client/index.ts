@@ -36,6 +36,7 @@ import { withAuth } from './AuthGate.tsx'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
 import { LensButton } from './Lens.tsx'
+import { CORE_URL } from './core.ts'
 import { EquityPage, LoansPage } from './EquityLoans.tsx'
 import { ProjectsPage, ProjectProfitabilityPage } from './Projects.tsx'
 import { TrialBalancePage } from './TrialBalance.tsx'
@@ -322,6 +323,31 @@ const PANELS: readonly PanelDefinition[] = [
  * @param ctx - browser plugin context with the slot registry.
  */
 export function apply(ctx: ClientContext): void {
+  // The sidebar brand lives inside DSH's New-Session button. Capture presses in
+  // the capture phase so *any* click on the logo, wordmark, or their padding
+  // opens the public landing page instead of starting a chat.
+  ctx.effect(() => {
+    const openLanding = (event: Event): void => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const brand = target.closest('[class*="brandIdentity"]')
+        ?? target.closest('[class*="brandMark"]')
+        ?? target.closest('[class*="brandName"]')
+      if (brand === null) return
+      const identity = brand.closest('[class*="brandIdentity"]') ?? brand
+      if (identity.querySelector('img') === null) return
+      event.preventDefault()
+      event.stopPropagation()
+      window.location.assign(`${CORE_URL}/?home=1`)
+    }
+    document.addEventListener('pointerdown', openLanding, true)
+    document.addEventListener('click', openLanding, true)
+    return () => {
+      document.removeEventListener('pointerdown', openLanding, true)
+      document.removeEventListener('click', openLanding, true)
+    }
+  })
+
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', function* () {
       yield ctx.slots.register({ name: 'sidebar.brand.mark' }, MicroBalanceMark)
