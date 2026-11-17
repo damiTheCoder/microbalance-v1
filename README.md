@@ -14,6 +14,7 @@ accounting workspace.
 | `microbalance-mock-ai/` | `microbalance-mock-ai` | 4000 | OpenAI/Anthropic-compatible mock AI server for offline testing |
 | `dsh-plugin/ui-accounting/` | `@microbalance/dsh-client-ui-accounting` | — | DeepSeek Harness Web UI pages (dashboard, ledgers, statements) |
 | `microbalance-asr/` | — | 8000 | Local faster-whisper speech-to-text for the voice input (no API key) |
+| `microbalance-tts/` | — | 8023 | Local Kokoro text-to-speech for spoken replies (OpenAI-compatible, no API key) |
 
 ## Quick start
 
