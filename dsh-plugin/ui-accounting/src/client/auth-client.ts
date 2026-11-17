@@ -13,3 +13,11 @@ export const authClient = createAuthClient({
   fetchOptions: { credentials: 'include' },
   plugins: [organizationClient()],
 })
+
+/** Start Google OAuth and return to the DSH app root afterwards. */
+export async function startGoogleSignIn(): Promise<void> {
+  await authClient.signIn.social({
+    provider: 'google',
+    callbackURL: `${window.location.origin}/`,
+  })
+}

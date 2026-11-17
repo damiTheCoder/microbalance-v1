@@ -539,7 +539,10 @@ export function loadPendingJournals(): Promise<PendingJournal[]> {
 
 /** Post a pending journal through the REST approval endpoint. */
 export async function approveJournal(id: string): Promise<unknown> {
-  const response = await fetch(`${CORE_URL}/api/journals/${id}/approve`, { method: 'POST' })
+  const response = await fetch(`${CORE_URL}/api/journals/${id}/approve`, {
+    method: 'POST',
+    credentials: 'include',
+  })
   if (!response.ok) {
     let message = `Core engine returned HTTP ${response.status}`
     try {

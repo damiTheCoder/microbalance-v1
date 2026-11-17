@@ -33,6 +33,7 @@ import { AssetRegisterPage, DepreciationPage } from './FixedAssets.tsx'
 import { BudgetVsActualPage, BudgetsPage } from './Budgets.tsx'
 import { BusinessProfilePage } from './Settings.tsx'
 import { withAuth } from './AuthGate.tsx'
+import { authClient, startGoogleSignIn } from './auth-client.ts'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
 import { LensButton } from './Lens.tsx'
@@ -323,6 +324,18 @@ const PANELS: readonly PanelDefinition[] = [
  * @param ctx - browser plugin context with the slot registry.
  */
 export function apply(ctx: ClientContext): void {
+  // The accounting app is Google-only: without a Better Auth session, leave for
+  // Google before the user can interact with any ledger panel.
+  void (async (): Promise<void> => {
+    try {
+      const result = await authClient.getSession()
+      if (result.error || result.data?.session) return
+      await startGoogleSignIn()
+    } catch {
+      // A reachable core hands the page's AuthGate the retry.
+    }
+  })()
+
   // The sidebar brand lives inside DSH's New-Session button. Capture presses in
   // the capture phase so *any* click on the logo, wordmark, or their padding
   // opens the public landing page instead of starting a chat.

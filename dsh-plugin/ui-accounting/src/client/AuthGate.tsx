@@ -1,8 +1,8 @@
 /** Google-only sign-in gate plus first-run organization onboarding. */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JSX, ReactNode } from 'react'
 import logoUrl from './assets/logo.png'
-import { authClient, CORE_ORIGIN } from './auth-client.ts'
+import { authClient, CORE_ORIGIN, startGoogleSignIn } from './auth-client.ts'
 import css from './accounting.module.css'
 
 interface Organization {
@@ -26,6 +26,7 @@ export function AuthGate({ children }: { children: ReactNode }): JSX.Element {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const autoRedirected = useRef(false)
 
   const messageOf = (cause: unknown): string =>
     cause instanceof Error ? cause.message : String(cause)
@@ -46,19 +47,23 @@ export function AuthGate({ children }: { children: ReactNode }): JSX.Element {
     }
   }, [session, loadOrganizations])
 
-  const signIn = async (): Promise<void> => {
+  const signIn = useCallback(async (): Promise<void> => {
     setBusy(true)
     setError(null)
     try {
-      await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: window.location.href,
-      })
+      await startGoogleSignIn()
     } catch (cause: unknown) {
       setError(messageOf(cause))
       setBusy(false)
     }
-  }
+  }, [])
+
+  // Signed out: leave for Google immediately instead of showing an app shell.
+  useEffect(() => {
+    if (isPending || session || autoRedirected.current) return
+    autoRedirected.current = true
+    void signIn()
+  }, [isPending, session, signIn])
 
   const activate = async (organizationId: string): Promise<void> => {
     setBusy(true)
@@ -110,14 +115,14 @@ export function AuthGate({ children }: { children: ReactNode }): JSX.Element {
         <div className={`${css.card} ${css.authCard}`}>
           <img className={css.authLogo} src={logoUrl} alt="" aria-hidden="true" />
           <h1 className={css.authTitle}>Welcome to MicroBalance</h1>
-          <p className={css.authText}>Sign in to your finance workspace.</p>
+          <p className={css.authText}>Taking you to Google to sign in.</p>
           <button
             type="button"
             className={`${css.button} ${css.primary} ${css.authButton}`}
             onClick={() => { void signIn() }}
             disabled={busy}
           >
-            {busy ? 'Redirecting…' : 'Continue with Google'}
+            {busy ? 'Redirecting to Google…' : 'Continue with Google'}
           </button>
           {error !== null && <div className={css.error}>{error}</div>}
           <p className={css.authFootnote}>
