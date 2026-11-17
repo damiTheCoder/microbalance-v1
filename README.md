@@ -13,6 +13,7 @@ accounting workspace.
 | `microbalance-ai/` | `microbalance-ai` | 3002 | Fastify service that maps chat to ledger tool calls (Gemini) |
 | `microbalance-mock-ai/` | `microbalance-mock-ai` | 4000 | OpenAI/Anthropic-compatible mock AI server for offline testing |
 | `dsh-plugin/ui-accounting/` | `@microbalance/dsh-client-ui-accounting` | — | DeepSeek Harness Web UI pages (dashboard, ledgers, statements) |
+| `microbalance-asr/` | — | 8000 | Local faster-whisper speech-to-text for the voice input (no API key) |
 
 ## Quick start
 

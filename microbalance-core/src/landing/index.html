@@ -116,6 +116,7 @@
 
   .login {
     padding: 0;
+    text-decoration: none;
     border: 0;
     background: none;
     font: inherit;
@@ -130,6 +131,7 @@
 
   .signup {
     padding: 11px 22px;
+    text-decoration: none;
     border: 0;
     border-radius: 999px;
     background: #111111;
@@ -217,6 +219,7 @@
 
   .google-btn {
     display: inline-flex;
+    text-decoration: none;
     align-items: center;
     justify-content: center;
     padding: 14px 30px;
@@ -597,13 +600,13 @@
         <span>microBalance</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="#features">Product</a>
-        <a href="#details">Solutions</a>
-        <a href="#pricing">Pricing</a>
+        <a href="/login">Product</a>
+        <a href="/login">Solutions</a>
+        <a href="/login">Pricing</a>
       </nav>
       <div class="nav-actions">
-        <button class="login" type="button" data-signin>Log in</button>
-        <button class="signup" type="button" data-signin>Sign up</button>
+        <a class="login" href="/login">Log in</a>
+        <a class="signup" href="/login">Sign up</a>
       </div>
     </div>
   </header>
@@ -611,17 +614,15 @@
   <main>
     <section class="hero">
       <div class="wrap">
-        <span class="announce reveal">New: AI-powered financial automation for Nigerian SMEs <a href="#features">→ Learn more</a></span>
+        <span class="announce reveal">New: AI-powered financial automation for Nigerian SMEs <a href="/login">→ Learn more</a></span>
         <h1 class="reveal" data-delay="1">Finance in motion.<br />Now with AI.</h1>
         <p class="lede reveal" data-delay="2">
           The AI accountant that runs your books, VAT, payroll, and financial reports — automatically.
         </p>
 
         <div class="cta-row reveal" data-delay="3">
-          <button class="google-btn" type="button" data-signin>
-            <span data-label>Start for free</span>
-          </button>
-          <a class="demo-link" id="demo-link" href="#features">Try the live demo</a>
+          <a class="google-btn" href="/login">Start for free</a>
+          <a class="demo-link" href="/login">Try the live demo</a>
         </div>
         <p class="cta-error" id="cta-error" role="alert"></p>
 
@@ -709,15 +710,15 @@
         <h2 class="reveal" data-delay="1">Ready to close your books in minutes?</h2>
         <p class="lead reveal" data-delay="2">Sign in with Google, name your business, and your chart of accounts is ready.</p>
         <div class="cta-row reveal" data-delay="3">
-          <button class="google-btn" type="button" data-signin>
+          <a class="google-btn" href="/login">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#fff" d="M21.6 12.23c0-.68-.06-1.33-.18-1.96H12v3.71h5.39a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.74 2.97-4.31 2.97-7.28Z"/>
               <path fill="#fff" opacity=".8" d="M12 22c2.7 0 4.96-.89 6.63-2.49l-3.24-2.51c-.9.6-2.05.96-3.39.96-2.6 0-4.8-1.76-5.59-4.12H3.06v2.59A9.99 9.99 0 0 0 12 22Z"/>
               <path fill="#fff" opacity=".62" d="M6.41 13.84a6 6 0 0 1 0-3.68V7.57H3.06a10 10 0 0 0 0 8.86l3.35-2.59Z"/>
               <path fill="#fff" opacity=".9" d="M12 5.96c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.95 2.98 14.7 2 12 2 8.09 2 4.71 4.24 3.06 7.57l3.35 2.59C7.2 7.72 9.4 5.96 12 5.96Z"/>
             </svg>
-            <span data-label>Get Started with Google</span>
-          </button>
+            <span>Get Started with Google</span>
+          </a>
         </div>
         <p class="cta-error" id="cta-error-2" role="alert"></p>
       </div>
@@ -779,57 +780,6 @@
 
       document.getElementById('year').textContent = String(new Date().getFullYear());
 
-      // Main app lives on the same host, port 3080.
-      var appUrl = location.protocol + '//' + location.hostname + ':3080/';
-      var demo = document.getElementById('demo-link');
-      if (demo) demo.href = appUrl;
-
-      function fail(message) {
-        var boxes = document.querySelectorAll('.cta-error');
-        boxes.forEach(function (box) {
-          box.textContent = message;
-          box.classList.add('visible');
-        });
-      }
-
-      function signIn() {
-        var buttons = document.querySelectorAll('[data-signin]');
-        buttons.forEach(function (button) {
-          button.disabled = true;
-          var label = button.querySelector('[data-label]');
-          if (label) label.textContent = 'Connecting…';
-        });
-
-        fetch('/api/auth/sign-in/social', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'google',
-            callbackURL: appUrl,
-            errorCallbackURL: location.href,
-          }),
-        })
-          .then(function (response) {
-            return response.json().then(function (body) {
-              if (!response.ok || !body.url) {
-                throw new Error(body.message || body.error || 'Could not start Google sign-in.');
-              }
-              return body.url;
-            });
-          })
-          .then(function (url) { window.location.assign(url); })
-          .catch(function (cause) {
-            buttons.forEach(function (button) {
-              button.disabled = false;
-            });
-            fail(cause && cause.message ? cause.message : 'Could not start Google sign-in.');
-          });
-      }
-
-      document.querySelectorAll('[data-signin]').forEach(function (button) {
-        button.addEventListener('click', signIn);
-      });
     })();
   </script>
 </body>
