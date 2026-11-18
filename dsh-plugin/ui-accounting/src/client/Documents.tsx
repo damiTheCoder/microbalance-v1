@@ -79,6 +79,13 @@ export function DocumentCentrePage() {
     reload()
   }, [reload])
 
+  // "Receipt Scanner" in the composer opens the same upload flow.
+  useEffect(() => {
+    if (window.sessionStorage.getItem('mb:scan') !== '1') return
+    window.sessionStorage.removeItem('mb:scan')
+    inputRef.current?.click()
+  }, [])
+
   const upload = async (file: File): Promise<void> => {
     if (busy !== null) return
     setBusy(`Uploading ${file.name}`)

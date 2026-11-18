@@ -87,6 +87,14 @@ export function IntegrationsPage() {
 
   useEffect(() => { loadDrive() }, [loadDrive])
 
+  // The composer's Integrations menu hands off the card it wants opened.
+  useEffect(() => {
+    const pending = window.sessionStorage.getItem('mb:integration')
+    if (pending !== 'drive' && pending !== 'gmail') return
+    window.sessionStorage.removeItem('mb:integration')
+    setOpen(pending)
+  }, [])
+
   // Poll only while the Gmail dialog is open so the OAuth return is picked up.
   useEffect(() => {
     if (open !== 'gmail') return

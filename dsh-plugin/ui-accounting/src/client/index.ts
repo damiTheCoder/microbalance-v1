@@ -37,8 +37,6 @@ import { authClient, startGoogleSignIn } from './auth-client.ts'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
 import { IntegrationsPage } from './Integrations.tsx'
-import { LensButton } from './Lens.tsx'
-import { MailButton } from './Mail.tsx'
 import { CORE_URL } from './core.ts'
 import { EquityPage, LoansPage } from './EquityLoans.tsx'
 import { ProjectsPage, ProjectProfitabilityPage } from './Projects.tsx'
@@ -69,8 +67,8 @@ import {
   WalletIcon,
 } from './icons.tsx'
 
-/** Required client service: the slot registry. */
-export const inject = ['slots']
+/** Required client services: the slot registry and panel navigation. */
+export const inject = ['slots', 'layout']
 
 interface PanelDefinition {
   readonly id: MainPanelId
@@ -376,11 +374,30 @@ export function apply(ctx: ClientContext): void {
       yield ctx.slots.register({ name: 'sidebar.brand.name' }, MicroBalanceName)
     }))
 
-  // Dual-action lens in the chat composer (next to the voice control).
-  ctx.slots.inject('conversation.input.right', () =>
-    ctx.slots.register({ name: 'conversation.input.right', id: 'mail', order: 89 }, MailButton))
-  ctx.slots.inject('conversation.input.right', () =>
-    ctx.slots.register({ name: 'conversation.input.right', id: 'lens', order: 90 }, LensButton))
+  // The composer's Integrations menu owns these entry points: it dispatches
+  // window events, which switch panels and hand the intent to the page.
+  ctx.effect(() => {
+    const openIntegration = (event: Event): void => {
+      const detail = (event as CustomEvent<string>).detail
+      window.sessionStorage.setItem('mb:integration', detail)
+      ctx.layout.selectPanel('integrations' as MainPanelId)
+    }
+    const scanReceipt = (): void => {
+      window.sessionStorage.setItem('mb:scan', '1')
+      ctx.layout.selectPanel('document-centre' as MainPanelId)
+    }
+    const openIntegrations = (): void => {
+      ctx.layout.selectPanel('integrations' as MainPanelId)
+    }
+    window.addEventListener('microbalance:integration', openIntegration)
+    window.addEventListener('microbalance:scan-receipt', scanReceipt)
+    window.addEventListener('microbalance:integrations', openIntegrations)
+    return () => {
+      window.removeEventListener('microbalance:integration', openIntegration)
+      window.removeEventListener('microbalance:scan-receipt', scanReceipt)
+      window.removeEventListener('microbalance:integrations', openIntegrations)
+    }
+  })
 
   for (const panel of PANELS) {
     ctx.slots.inject('main', () =>
