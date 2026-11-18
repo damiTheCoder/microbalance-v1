@@ -219,8 +219,7 @@ const csvCell = (value: string | number): string => {
 
 /**
  * NRS VAT return: output VAT from sales invoices and input VAT from purchase
- * bills. MicroBalance does not record VAT on bills, so input lines are absent
- * and report zero.
+ * bills. Net payable is output VAT minus input VAT for the period.
  */
 export async function generateVatSchedule(
   companyId: string,
@@ -231,22 +230,28 @@ export async function generateVatSchedule(
   const db = companyPrisma(companyId);
   const range = monthRange(month, year);
 
-  const [companyName, invoices] = await Promise.all([
+  const [companyName, invoices, bills] = await Promise.all([
     companyNameOf(db, companyId),
     db.salesInvoice.findMany({
       where: { date: range },
       include: { customer: true, lines: true },
       orderBy: { date: 'asc' },
     }),
+    db.purchaseBill.findMany({
+      where: { date: range },
+      include: { vendor: true },
+      orderBy: { date: 'asc' },
+    }),
   ]);
 
-  const rows = invoices.map((invoice) => {
+  const outputRows = invoices.map((invoice) => {
     const taxable = invoice.lines.reduce(
       (sum, line) => sum.plus(line.total),
       new Prisma.Decimal(0),
     );
     const vat = new Prisma.Decimal(invoice.totalAmount).minus(taxable);
     return {
+      type: 'Output VAT',
       date: isoDate(invoice.date),
       number: invoice.invoiceNumber,
       party: invoice.customer.name,
@@ -255,11 +260,28 @@ export async function generateVatSchedule(
     };
   });
 
-  const taxableTotal = rows.reduce(
-    (sum, row) => sum.plus(row.taxable),
-    new Prisma.Decimal(0),
-  );
-  const vatTotal = rows.reduce((sum, row) => sum.plus(row.vat), new Prisma.Decimal(0));
+  const inputRows = bills.map((bill) => {
+    const vat = new Prisma.Decimal(bill.vatAmount);
+    return {
+      type: 'Input VAT',
+      date: isoDate(bill.date),
+      number: bill.billNumber,
+      party: bill.vendor.name,
+      taxable: new Prisma.Decimal(bill.totalAmount).minus(vat),
+      vat,
+    };
+  });
+
+  const totalOf = (
+    rows: typeof outputRows,
+    pick: (row: (typeof outputRows)[number]) => Prisma.Decimal,
+  ): Prisma.Decimal => rows.reduce((sum, row) => sum.plus(pick(row)), new Prisma.Decimal(0));
+
+  const outputTaxable = totalOf(outputRows, (row) => row.taxable);
+  const outputVat = totalOf(outputRows, (row) => row.vat);
+  const inputTaxable = totalOf(inputRows, (row) => row.taxable);
+  const inputVat = totalOf(inputRows, (row) => row.vat);
+  const netVat = outputVat.minus(inputVat);
 
   const lines: string[] = [
     ['VAT Return', companyName].map(csvCell).join(','),
@@ -275,23 +297,19 @@ export async function generateVatSchedule(
       'Taxable Amount',
       'VAT Amount',
     ].map(csvCell).join(','),
-    ...rows.map((row) =>
-      [
-        'Output VAT',
-        row.date,
-        row.number,
-        row.party,
-        '',
-        row.taxable.toFixed(2),
-        row.vat.toFixed(2),
-      ].map(csvCell).join(','),
+    ...[...outputRows, ...inputRows].map((row) =>
+      [row.type, row.date, row.number, row.party, '', row.taxable.toFixed(2), row.vat.toFixed(2)]
+        .map(csvCell)
+        .join(','),
     ),
     '',
-    ['TOTAL OUTPUT', '', '', '', '', taxableTotal.toFixed(2), vatTotal.toFixed(2)]
+    ['TOTAL OUTPUT', '', '', '', '', outputTaxable.toFixed(2), outputVat.toFixed(2)]
       .map(csvCell)
       .join(','),
-    ['TOTAL INPUT', '', '', '', '', '0.00', '0.00'].map(csvCell).join(','),
-    ['NET VAT PAYABLE', '', '', '', '', '', vatTotal.toFixed(2)].map(csvCell).join(','),
+    ['TOTAL INPUT', '', '', '', '', inputTaxable.toFixed(2), inputVat.toFixed(2)]
+      .map(csvCell)
+      .join(','),
+    ['NET VAT PAYABLE', '', '', '', '', '', netVat.toFixed(2)].map(csvCell).join(','),
     '',
   ];
 

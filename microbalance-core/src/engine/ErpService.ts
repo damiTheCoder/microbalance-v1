@@ -460,13 +460,17 @@ export class ErpService {
       }
 
       const lines = this.buildBillLines(input.items);
-      const total = lines.reduce(
+      const subtotal = lines.reduce(
         (sum, line) => sum.plus(line.total),
         new Prisma.Decimal(0),
       );
-      if (total.lte(0)) {
+      if (subtotal.lte(0)) {
         throw new LedgerError('VALIDATION', 'Bill total must be greater than zero');
       }
+      // Nigerian VAT is 7.5%, charged on the bill subtotal.
+      const vatRate = new Prisma.Decimal('7.5');
+      const vatAmount = subtotal.times(vatRate).div(100).toDecimalPlaces(2);
+      const total = subtotal.plus(vatAmount);
 
       const expense = await tx.account.findFirst({ where: { name: 'Office Supplies Expense' } })
         ?? await tx.account.findFirst({ where: { type: 'EXPENSE' }, orderBy: { code: 'asc' } });
@@ -481,10 +485,13 @@ export class ErpService {
       if (whtRate.isNegative() || whtRate.gt(100)) {
         throw new LedgerError('VALIDATION', 'WHT rate must be between 0 and 100');
       }
-      const whtAmount = total.times(whtRate).div(100).toDecimalPlaces(2);
+      const whtAmount = subtotal.times(whtRate).div(100).toDecimalPlaces(2);
       const netPayable = total.minus(whtAmount);
       const whtPayable = whtAmount.gt(0)
         ? await this.requireAccount(tx, 'WHT Payable', 'LIABILITY')
+        : undefined;
+      const vatInput = vatAmount.gt(0)
+        ? await this.requireAccount(tx, 'VAT Input', 'ASSET')
         : undefined;
 
       const existingCount = await tx.purchaseBill.count();
@@ -498,6 +505,8 @@ export class ErpService {
           dueDate,
           status: 'RECEIVED',
           totalAmount: total,
+          vatRate,
+          vatAmount,
           amountPaid: new Prisma.Decimal(0),
           whtRate,
           whtAmount,
@@ -519,7 +528,8 @@ export class ErpService {
           date,
           memo: `Bill ${billNumber} - ${vendor.name}`,
           lines: [
-            { accountId: expense.id, debit: total },
+            { accountId: expense.id, debit: subtotal },
+            ...(vatInput !== undefined ? [{ accountId: vatInput.id, debit: vatAmount }] : []),
             { accountId: payable.id, credit: netPayable },
             ...(whtPayable !== undefined ? [{ accountId: whtPayable.id, credit: whtAmount }] : []),
           ],

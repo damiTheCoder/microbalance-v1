@@ -183,6 +183,8 @@ model PurchaseBill {
   dueDate     DateTime
   status      BillStatus @default(DRAFT)
   totalAmount Decimal
+  vatRate     Decimal    @default(7.5)
+  vatAmount   Decimal    @default(0)
   amountPaid  Decimal    @default(0)
   whtRate     Decimal    @default(0)
   whtAmount   Decimal    @default(0)

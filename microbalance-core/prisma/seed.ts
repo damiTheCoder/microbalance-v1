@@ -14,6 +14,7 @@ const ACCOUNTS = [
   { code: '1000', name: 'Cash', type: 'ASSET', category: 'Current Assets', isSystem: true },
   { code: '1010', name: 'Bank', type: 'ASSET', category: 'Current Assets', isSystem: true },
   { code: '1100', name: 'Accounts Receivable', type: 'ASSET', category: 'Current Assets', isSystem: true },
+  { code: '1150', name: 'VAT Input', type: 'ASSET', category: 'Current Assets', isSystem: true },
   { code: '1200', name: 'Inventory', type: 'ASSET', category: 'Current Assets', isSystem: true },
   { code: '1300', name: 'Prepaid Expenses', type: 'ASSET', category: 'Current Assets', isSystem: true },
   { code: '1500', name: 'Fixed Assets', type: 'ASSET', category: 'Non-current Assets', isSystem: true },
