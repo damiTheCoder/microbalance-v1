@@ -43,6 +43,16 @@ function from(): string {
   return process.env.SMTP_USER ?? 'noreply@microbalance.ng';
 }
 
+/** Undo HTML entities the model sometimes passes through (`&amp;`, `&#39;`). */
+function plain(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'");
+}
+
 /**
  * Send one plain-text email, optionally with attachments.
  * @param input - recipient(s), subject, body, and attachments.
@@ -52,8 +62,8 @@ export async function sendEmail(input: SendEmailInput): Promise<string> {
   const message: SendMailOptions = {
     from: from(),
     to: Array.isArray(input.to) ? input.to.join(', ') : input.to,
-    subject: input.subject,
-    text: input.text,
+    subject: plain(input.subject),
+    text: plain(input.text),
     attachments: input.attachments,
   };
   const info = await mailer().sendMail(message);
