@@ -356,6 +356,8 @@ model BusinessProfile {
   whtRateIndividual Decimal  @default(5)
   driveConnected    Boolean  @default(false)
   driveRefreshToken String?
+  gmailRefreshToken String?
+  gmailEmail        String?
   driveSyncSchedule String   @default("MANUAL")
   updatedAt         DateTime @updatedAt
 }

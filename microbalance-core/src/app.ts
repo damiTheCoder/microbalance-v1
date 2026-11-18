@@ -14,6 +14,7 @@ import { documentRoutes } from './routes/documents.js';
 import { auditRoutes } from './routes/audit.js';
 import { driveRoutes } from './routes/drive.js';
 import { emailRoutes } from './routes/email.js';
+import { gmailAuthRoutes } from './routes/gmail-auth.js';
 import { logAudit } from './lib/audit.js';
 import { auth } from './lib/auth.js';
 import { prisma } from './lib/prisma.js';
@@ -276,6 +277,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(auditRoutes);
   await app.register(driveRoutes);
   await app.register(emailRoutes);
+  await app.register(gmailAuthRoutes);
   await app.register(apiRoutes);
 
   return app;

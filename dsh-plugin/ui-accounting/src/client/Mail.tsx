@@ -1,5 +1,5 @@
 /** Composer mail action: email a financial report to a recipient. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { Mail } from 'lucide-react'
@@ -28,6 +28,25 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [gmail, setGmail] = useState<{ connected: boolean; email: string } | null>(null)
+
+  // Ask the core which Google account (if any) can send mail, and re-check
+  // while the modal is open so the OAuth tab's return is picked up.
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    const load = async (): Promise<void> => {
+      try {
+        const response = await fetch(`${CORE_URL}/api/email/status`, { credentials: 'include' })
+        const body = await response.json().catch(() => null)
+        if (!alive || body === null) return
+        setGmail({ connected: body.connected === true, email: String(body.email ?? '') })
+      } catch { /* core offline: leave the last known state */ }
+    }
+    void load()
+    const timer = window.setInterval(() => { void load() }, 3000)
+    return () => { alive = false; window.clearInterval(timer) }
+  }, [open])
 
   const submit = async (): Promise<void> => {
     setBusy(true)
@@ -121,6 +140,19 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
               />
             </label>
             {error !== null && <p className={css.mailError}>{error}</p>}
+            {gmail !== null && !gmail.connected && (
+              <a
+                className={css.mailConnect}
+                href={`${CORE_URL}/api/email/connect`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Connect Google Account for Email
+              </a>
+            )}
+            {gmail?.connected === true && (
+              <p className={css.mailConnected}>✅ Gmail Connected as {gmail.email}</p>
+            )}
             <div className={css.mailActions}>
               <button
                 type="button"
@@ -133,7 +165,7 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
               <button
                 type="button"
                 className={css.primary}
-                disabled={busy || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to) || subject.trim() === ''}
+                disabled={busy || gmail?.connected === false || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to) || subject.trim() === ''}
                 onClick={() => { void submit() }}
               >
                 {busy ? 'Sending…' : 'Send'}

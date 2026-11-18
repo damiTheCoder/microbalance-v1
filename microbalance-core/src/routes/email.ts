@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { sendEmail } from '../lib/mailer.js';
+import { GmailAuthError, GmailNotConnectedError, sendEmail } from '../lib/mailer.js';
 import type { EmailAttachment } from '../lib/mailer.js';
 import { generatePdfReport } from '../lib/reports.js';
 import type { ReportType } from '../lib/reports.js';
@@ -44,7 +44,15 @@ export async function emailRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const messageId = await sendEmail({ to, subject, text, attachments });
+    let messageId: string;
+    try {
+      messageId = await sendEmail(companyId, { to, subject, text, attachments });
+    } catch (cause) {
+      if (cause instanceof GmailNotConnectedError || cause instanceof GmailAuthError) {
+        throw new LedgerError('STATE', cause.message);
+      }
+      throw cause;
+    }
     return { sent: true, to, messageId };
   });
 }
