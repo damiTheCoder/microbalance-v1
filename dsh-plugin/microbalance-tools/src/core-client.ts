@@ -178,3 +178,54 @@ export async function approveJournal(
     {},
   )
 }
+
+/**
+ * Send an email through the core engine, optionally attaching a report PDF.
+ *
+ * @param input - recipient, subject, body, and optional report type.
+ * @returns the engine acknowledgement, or a `CoreError`.
+ */
+export async function sendEmailRequest(input: {
+  to: string
+  subject: string
+  text: string
+  reportType?: string
+}): Promise<JsonValue | CoreError> {
+  let response: Response
+  try {
+    const token = agentToken()
+    response = await fetch(`${coreApiUrl()}/api/email/send`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(CORE_TIMEOUT_MS),
+    })
+  } catch (error) {
+    if (isTimeout(error)) {
+      return failure(`Core engine timed out after ${CORE_TIMEOUT_MS}ms`, 'TIMEOUT')
+    }
+    return failure(`Core engine unreachable at ${coreApiUrl()}`, 'NETWORK')
+  }
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch {
+    return failure(
+      `Core engine returned a non-JSON response (HTTP ${response.status})`,
+      'CORE_ERROR',
+    )
+  }
+  if (!response.ok) {
+    const record = isRecord(payload) ? payload : {}
+    const message =
+      typeof record.error === 'string'
+        ? record.error
+        : `Core engine returned HTTP ${response.status}`
+    const code = typeof record.code === 'string' ? record.code : `HTTP_${response.status}`
+    return failure(message, code)
+  }
+  return (isRecord(payload) ? payload : { sent: true }) as JsonValue
+}

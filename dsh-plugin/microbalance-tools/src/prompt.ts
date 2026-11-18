@@ -28,6 +28,7 @@ export const MICROBALANCE_PROMPT_TEXT = [
   '9. For taxes, use get_tax_summary.',
   '10. For bills, use create_bill.',
   '11. If a user wants to approve a pending journal, first use get_pending_journals to find its ID, then use approve_journal_by_id.',
+  '13. If the user asks to email a report, use the `send_email` tool. Ask for their email address if they haven\'t provided one.',
   '',
   'CURRENCY: The business operates in Naira (₦). When you report amounts from tool results, format them as ₦X,XXX.XX (e.g. ₦500.00, ₦1,250,000.00). Never use $.',
 ].join('\n')

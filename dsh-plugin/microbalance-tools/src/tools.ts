@@ -1,5 +1,5 @@
 /**
- * The 23 model-facing MicroBalance tools.
+ * The 24 model-facing MicroBalance tools.
  *
  * Each definition is registered by `apply()` in `index.ts` through
  * `ctx.tools.register(defineTool(...))`. Tool bodies never throw: every core
@@ -8,7 +8,7 @@
 
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
-import { approveJournal, callCore } from './core-client.ts'
+import { approveJournal, callCore, sendEmailRequest } from './core-client.ts'
 import { renderJson } from './render.ts'
 import type {
   ApAgingResult,
@@ -599,7 +599,50 @@ const reconcileBankTransaction = defineTool({
   },
 })
 
-/** All 23 tool definitions, in stable registration order. */
+
+// ---------------------------------------------------------------------------
+// Email
+// ---------------------------------------------------------------------------
+
+const sendEmailTool = defineTool({
+  name: 'send_email',
+  description:
+    'Send an email to a recipient. Can attach a financial report (PROFIT_AND_LOSS, BALANCE_SHEET, TRIAL_BALANCE).',
+  parameters: {
+    to: {
+      type: 'string',
+      required: true,
+      description: 'Recipient email address',
+    },
+    subject: {
+      type: 'string',
+      required: true,
+      description: 'Email subject line',
+    },
+    body: {
+      type: 'string',
+      required: true,
+      description: 'Plain-text email body',
+    },
+    reportType: {
+      type: 'string',
+      enum: ['PROFIT_AND_LOSS', 'BALANCE_SHEET', 'TRIAL_BALANCE'],
+      description: 'Financial report to attach as a PDF',
+    },
+  },
+  output: jsonOutput,
+  execute: (args) => {
+    const reportType = args.reportType
+    return sendEmailRequest({
+      to: String(args.to),
+      subject: String(args.subject),
+      text: String(args.body),
+      ...(reportType === undefined ? {} : { reportType }),
+    })
+  },
+})
+
+/** All 24 tool definitions, in stable registration order. */
 export const microbalanceTools: ToolDefinition[] = [
   getTrialBalance,
   proposeJournalEntry,
@@ -624,4 +667,5 @@ export const microbalanceTools: ToolDefinition[] = [
   getProfitAndLoss,
   getBalanceSheet,
   getGeneralLedger,
+  sendEmailTool,
 ]

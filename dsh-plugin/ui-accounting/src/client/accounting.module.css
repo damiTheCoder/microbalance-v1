@@ -863,3 +863,74 @@ html[data-readonly='true'] .page .filters .primary {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* --------------------------------------------------------- mail composer */
+.mailBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(17, 24, 39, 0.28);
+}
+.mailDialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 61;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(17, 24, 39, 0.22);
+}
+.mailTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111111;
+}
+.mailField {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+.mailInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.mailInput:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+.mailError { margin: 0; font-size: 12px; color: #b91c1c; }
+.mailActions { display: flex; justify-content: flex-end; gap: 8px; }
+.mailCancel {
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mailToast {
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  z-index: 62;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12.5px;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.24);
+}
