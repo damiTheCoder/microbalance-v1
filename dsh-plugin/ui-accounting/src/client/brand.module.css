@@ -2,14 +2,14 @@
 
 .mark {
   display: block;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
   object-fit: contain;
 }
 
 .name {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.015em;
   white-space: nowrap;
