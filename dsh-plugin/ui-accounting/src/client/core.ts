@@ -468,6 +468,11 @@ export function loadTrialBalance(): Promise<TrialBalance> {
   return callCore<TrialBalance>('GET_TRIAL_BALANCE')
 }
 
+/** Business display name from the tenant profile. */
+export function loadBusinessName(): Promise<{ name: string }> {
+  return callCore<{ name: string }>('GET_BUSINESS_PROFILE')
+}
+
 /** Fetch a profit-and-loss report for a date range. */
 export function loadProfitAndLoss(from: string, to: string): Promise<ProfitAndLoss> {
   return callCore<ProfitAndLoss>('GET_PROFIT_AND_LOSS', { from, to })

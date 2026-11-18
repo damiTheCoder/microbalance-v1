@@ -1,4 +1,6 @@
-/** Premium financial dashboard: KPI cards, performance chart, recent activity. */
+/** Premium financial dashboard: command bar, performance chart, recent activity. */
+import { useEffect, useRef, useState } from 'react'
+import { ExternalLink, Globe, Store } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -8,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { formatNaira } from './core.ts'
+import { formatNaira, loadBusinessName } from './core.ts'
+import brandMark from './assets/MM1.png'
 import { CHART_COLORS, chartAxisTick, chartCursor, chartTooltipStyle } from './chartTheme.ts'
 import { useTrialBalance } from './useTrialBalance.ts'
 import css from './dashboard.module.css'
@@ -76,10 +79,47 @@ const compactNaira = (value: number): string => {
   return `₦${value}`
 }
 
+/** Headline naira figure: compact millions, full amount otherwise. */
+const nairaText = (value: number): string => {
+  const sign = value < 0 ? '-' : ''
+  const amount = Math.abs(value)
+  if (amount >= 1_000_000) return `${sign}₦${(amount / 1_000_000).toFixed(1)}M`
+  return `${sign}₦${Math.round(amount).toLocaleString('en-NG')}`
+}
+
 /** Render the accounting overview. */
 export function DashboardPage() {
   const { data } = useTrialBalance()
   const accounts = data?.accounts ?? []
+  const [activeMetric, setActiveMetric] = useState('revenue')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [businessName, setBusinessName] = useState('')
+  const barRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    loadBusinessName()
+      .then((profile) => { if (alive && profile.name) setBusinessName(profile.name) })
+      .catch(() => undefined)
+    return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = (event: MouseEvent | KeyboardEvent): void => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === 'Escape') setMenuOpen(false)
+        return
+      }
+      if (barRef.current !== null && !barRef.current.contains(event.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [menuOpen])
 
   const totalFor = (predicate: (code: string, type: string) => boolean): number =>
     accounts
@@ -91,12 +131,15 @@ export function DashboardPage() {
   const expenses = totalFor((_code, type) => type === 'EXPENSE')
   const netProfit = revenue - expenses
 
-  const cards = [
-    { label: 'Total Cash', value: cash, delta: 8.4, good: true },
-    { label: 'Total Revenue', value: revenue, delta: 12.6, good: true },
-    { label: 'Total Expenses', value: expenses, delta: 3.2, good: false },
-    { label: 'Net Profit', value: netProfit, delta: 18.9, good: true },
+  const metrics = [
+    { key: 'cash', label: 'Total Cash', value: cash, delta: 8.4, good: true },
+    { key: 'revenue', label: 'Total Revenue', value: revenue, delta: 12.6, good: true },
+    { key: 'expenses', label: 'Total Expenses', value: expenses, delta: 3.2, good: false },
+    { key: 'profit', label: 'Net Profit', value: netProfit, delta: 18.9, good: true },
   ]
+  const fallback = { key: 'revenue', label: 'Total Revenue', value: revenue, delta: 12.6, good: true }
+  const active = metrics.find(metric => metric.key === activeMetric) ?? fallback
+  const others = metrics.filter(metric => metric.key !== active.key)
 
   return (
     <div className={css.page}>
@@ -108,19 +151,77 @@ export function DashboardPage() {
         <span className={css.period}>FY 2026</span>
       </header>
 
-      <div className={css.cards}>
-        {cards.map(card => (
-          <article key={card.label} className={css.card}>
-            <span className={css.cardLabel}>{card.label}</span>
-            <strong className={css.cardValue}>{formatNaira(card.value)}</strong>
-            <span className={card.good ? css.trendGood : css.trendBad}>
-              <span aria-hidden="true">{card.delta >= 0 ? '▲' : '▼'}</span>
-              {Math.abs(card.delta).toFixed(1)}%
-              <span className={css.trendContext}>vs last month</span>
+      <section className={css.kpiCard} ref={barRef}>
+        <div className={css.kpiIcon}>
+          <img src={brandMark} alt="" className={css.kpiIconImage} />
+        </div>
+        <div className={css.kpiBody}>
+          <div className={css.kpiHead}>
+            <div>
+              <h2 className={css.kpiTitle}>{businessName || 'Your business'}</h2>
+              <div className={css.kpiSub}>
+                <span className={css.kpiDropWrap}>
+                  <button
+                    type="button"
+                    className={css.kpiDrop}
+                    onClick={() => setMenuOpen(open => !open)}
+                    aria-haspopup="listbox"
+                    aria-expanded={menuOpen}
+                  >
+                    View more balances
+                    <span aria-hidden="true">▾</span>
+                  </button>
+                  {menuOpen && (
+                    <ul className={css.kpiMenu} role="listbox" aria-label="Metrics">
+                      {others.map(metric => (
+                        <li key={metric.key}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected="false"
+                            className={css.kpiMenuItem}
+                            onClick={() => {
+                              setActiveMetric(metric.key)
+                              setMenuOpen(false)
+                            }}
+                          >
+                            <span>{metric.label}</span>
+                            <span className={metric.delta >= 0 ? css.kpiMiniGood : css.kpiMiniBad}>
+                              {nairaText(metric.value)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </span>
+                <button type="button" className={css.kpiGhost} title="View public site" aria-label="View public site">
+                  <Globe size={14} />
+                </button>
+                <button type="button" className={css.kpiGhost} title="Open storefront" aria-label="Open storefront">
+                  <ExternalLink size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className={css.kpiMetricRow}>
+            <span className={css.kpiMetricLabel}>{active.label}</span>
+            <button type="button" className={css.kpiGhost} title="Public view" aria-label="Public view">
+              <Globe size={13} />
+            </button>
+            <button type="button" className={css.kpiGhost} title="Store view" aria-label="Store view">
+              <Store size={13} />
+            </button>
+          </div>
+          <div className={css.kpiValueRow}>
+            <strong className={css.kpiValue}>{nairaText(active.value)}</strong>
+            <span className={`${css.kpiPill} ${active.delta >= 0 ? css.kpiPillGood : css.kpiPillBad}`}>
+              {active.delta >= 0 ? '+' : ''}
+              {active.delta.toFixed(0)}%
             </span>
-          </article>
-        ))}
-      </div>
+          </div>
+        </div>
+      </section>
 
       <section className={css.chartCard}>
         <header className={css.chartHeader}>

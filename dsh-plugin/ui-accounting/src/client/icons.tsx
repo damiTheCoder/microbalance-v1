@@ -335,3 +335,32 @@ export function SettingsIcon({ size }: IconProps): JSX.Element {
     </Glyph>
   )
 }
+
+/** Lucide `layout-dashboard`. */
+export function LayoutDashboardIcon({ size }: IconProps): JSX.Element {
+  return (
+    <Glyph size={size}>
+      <>
+        <rect x="3" y="3" width="7" height="9" rx="1.5" />
+        <rect x="14" y="3" width="7" height="5" rx="1.5" />
+        <rect x="14" y="12" width="7" height="9" rx="1.5" />
+        <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </>
+    </Glyph>
+  )
+}
+
+/** Lucide `list-tree`, used for the chart of accounts. */
+export function ListTreeIcon({ size }: IconProps): JSX.Element {
+  return (
+    <Glyph size={size}>
+      <>
+        <path d="M21 6H8" />
+        <path d="M21 12h-8" />
+        <path d="M21 18h-8" />
+        <path d="M3 6v4c0 1.1.9 2 2 2h3" />
+        <path d="M3 10v6c0 1.1.9 2 2 2h3" />
+      </>
+    </Glyph>
+  )
+}
