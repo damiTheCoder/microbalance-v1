@@ -198,7 +198,7 @@ export function IntegrationsPage() {
       />
 
       <div className={css.integrationGrid}>
-        {visible.map(item => {
+        {visible.map((item) => {
           const connected = item.id === 'drive'
             ? drive?.driveConnected === true
             : gmail?.connected === true

@@ -1,6 +1,7 @@
 /** Tax & compliance: VAT/WHT position and recent pending tax activity. */
 import { useCallback, useEffect, useState } from 'react'
 import {
+  CORE_URL,
   formatNaira,
   loadPendingJournals,
   loadTaxSummary,
@@ -27,6 +28,8 @@ export function TaxDashboardPage() {
   const [journals, setJournals] = useState<PendingJournal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<'paye' | 'vat' | 'wht' | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const reload = useCallback((): void => {
     setLoading(true)
@@ -44,6 +47,46 @@ export function TaxDashboardPage() {
   useEffect(() => {
     reload()
   }, [reload])
+
+  const downloadSchedule = useCallback(
+    async (kind: 'paye' | 'vat' | 'wht'): Promise<void> => {
+      setDownloading(kind)
+      setDownloadError(null)
+      try {
+        const now = new Date()
+        const query = `month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+        const response = await fetch(`${CORE_URL}/api/tax/${kind}-schedule?${query}`, {
+          credentials: 'include',
+        })
+        if (!response.ok) {
+          let message = `Core engine returned HTTP ${response.status}`
+          try {
+            const body = (await response.json()) as { error?: string }
+            if (typeof body.error === 'string') message = body.error
+          } catch {
+            // Non-JSON failures keep the status-line message.
+          }
+          throw new Error(message)
+        }
+        const disposition = response.headers.get('content-disposition') ?? ''
+        const filename = /filename="([^"]+)"/.exec(disposition)?.[1]
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename ?? `${kind}-schedule`
+        document.body.append(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      } catch (cause: unknown) {
+        setDownloadError(messageOf(cause))
+      } finally {
+        setDownloading(null)
+      }
+    },
+    [],
+  )
 
   return (
     <div className={css.page}>
@@ -68,6 +111,44 @@ export function TaxDashboardPage() {
           <span className={css.kpiLabel}>WHT Payable</span>
           <strong className={css.kpiValue}>{formatNaira(whtPayable ?? summary?.whtPayable ?? '0')}</strong>
         </article>
+      </div>
+
+      <div className={`${css.card} ${css.downloadCard}`}>
+        <div className={css.downloadHeading}>Download Tax Schedules</div>
+        <p className={css.downloadHint}>
+          LIRS PAYE and NRS VAT/WHT templates for the current month.
+        </p>
+        <div className={css.downloadRow}>
+          <button
+            type="button"
+            className={`${css.button} ${css.downloadButton}`}
+            onClick={() => { void downloadSchedule('paye') }}
+            disabled={downloading !== null}
+          >
+            {downloading === 'paye'
+              ? 'Preparing PAYE…'
+              : '📥 Download LIRS PAYE Schedule (.xlsx)'}
+          </button>
+          <button
+            type="button"
+            className={`${css.button} ${css.downloadButton}`}
+            onClick={() => { void downloadSchedule('vat') }}
+            disabled={downloading !== null}
+          >
+            {downloading === 'vat' ? 'Preparing VAT…' : '📥 Download VAT Return (.csv)'}
+          </button>
+          <button
+            type="button"
+            className={`${css.button} ${css.downloadButton}`}
+            onClick={() => { void downloadSchedule('wht') }}
+            disabled={downloading !== null}
+          >
+            {downloading === 'wht' ? 'Preparing WHT…' : '📥 Download WHT Schedule (.xlsx)'}
+          </button>
+        </div>
+        {downloadError !== null && (
+          <div className={css.error}>Could not download schedule: {downloadError}</div>
+        )}
       </div>
 
       <div className={css.card}>

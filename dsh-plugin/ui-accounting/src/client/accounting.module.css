@@ -1070,3 +1070,36 @@ html[data-readonly='true'] .page .filters .primary {
   .integrationGrid { grid-template-columns: minmax(0, 1fr); }
   .integrationSearch { max-width: none; }
 }
+
+/* Statutory schedule downloads under the tax KPI cards. */
+.downloadCard {
+  margin-bottom: 18px;
+}
+
+.downloadHeading {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.downloadHint {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.downloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.downloadButton {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.downloadButton:hover {
+  background: #f9fafb;
+}

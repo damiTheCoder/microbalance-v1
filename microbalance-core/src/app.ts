@@ -16,12 +16,13 @@ import { driveRoutes } from './routes/drive.js';
 import { emailRoutes } from './routes/email.js';
 import { gmailAuthRoutes } from './routes/gmail-auth.js';
 import { integrationRoutes } from './routes/integrations.js';
+import { taxDownloadRoutes } from './routes/tax-download.js';
 import { logAudit } from './lib/audit.js';
 import { auth } from './lib/auth.js';
 import { prisma } from './lib/prisma.js';
 import { LedgerError } from './engine/errors.js';
 
-const PROTECTED_PREFIXES = ['/api/ai-intent', '/api/journals', '/api/documents', '/api/audit', '/api/drive', '/api/email', '/api/integrations'];
+const PROTECTED_PREFIXES = ['/api/ai-intent', '/api/journals', '/api/documents', '/api/audit', '/api/drive', '/api/email', '/api/integrations', '/api/tax'];
 
 /** Business actions mapped to audit records (entity type + verb). */
 const AUDIT_ACTIONS: Record<string, { action: string; entityType: string }> = {
@@ -280,6 +281,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(emailRoutes);
   await app.register(gmailAuthRoutes);
   await app.register(integrationRoutes);
+  await app.register(taxDownloadRoutes);
   await app.register(apiRoutes);
 
   return app;

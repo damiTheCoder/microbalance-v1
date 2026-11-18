@@ -22,6 +22,7 @@
     "@prisma/client": "^6.19.3",
     "better-auth": "^1.7.25",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "fastify": "^5.12.8",
     "googleapis": "^190.0.0",
     "node-cron": "^4.6.0",

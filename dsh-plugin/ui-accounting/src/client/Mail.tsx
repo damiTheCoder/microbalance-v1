@@ -104,7 +104,7 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
                 value={to}
                 placeholder="name@example.com"
                 autoFocus
-                onChange={event => { setTo(event.target.value) }}
+                onChange={(event) => { setTo(event.target.value) }}
               />
             </label>
             <label className={css.mailField}>
@@ -114,7 +114,7 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
                 className={css.mailInput}
                 value={subject}
                 placeholder="Financial report"
-                onChange={event => { setSubject(event.target.value) }}
+                onChange={(event) => { setSubject(event.target.value) }}
               />
             </label>
             <label className={css.mailField}>
@@ -122,7 +122,7 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
               <select
                 className={css.mailInput}
                 value={reportType}
-                onChange={event => { setReportType(event.target.value as MailReport) }}
+                onChange={(event) => { setReportType(event.target.value as MailReport) }}
               >
                 {REPORTS.map(report => (
                   <option key={report.value} value={report.value}>{report.label}</option>
@@ -136,7 +136,7 @@ export function MailButton(_props: PropsRuntime<'conversation.input.right'>) {
                 rows={4}
                 value={text}
                 placeholder="Please find the report attached."
-                onChange={event => { setText(event.target.value) }}
+                onChange={(event) => { setText(event.target.value) }}
               />
             </label>
             {error !== null && <p className={css.mailError}>{error}</p>}
