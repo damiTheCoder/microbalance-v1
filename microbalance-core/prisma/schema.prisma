@@ -359,6 +359,8 @@ model BusinessProfile {
   gmailRefreshToken String?
   gmailEmail        String?
   driveSyncSchedule String   @default("MANUAL")
+  driveEnabled      Boolean  @default(true)
+  gmailEnabled      Boolean  @default(true)
   updatedAt         DateTime @updatedAt
 }
 

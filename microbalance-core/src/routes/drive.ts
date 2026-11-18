@@ -69,6 +69,10 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
     const companyId = request.companyId;
     if (!companyId) throw new LedgerError('VALIDATION', 'Company is required');
     try {
+      const profile = await companyPrisma(companyId).businessProfile.findFirst();
+      if (profile?.driveEnabled === false) {
+        throw new LedgerError('STATE', 'Google Drive is turned off in Integrations.');
+      }
       const result = await syncCompanyReports(companyId);
       return { data: result };
     } catch (cause) {

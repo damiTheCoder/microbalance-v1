@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CORE_URL, callCore } from './core.ts'
+import { GmailIcon, GoogleDriveIcon, QuickBooksIcon, SlackIcon, WhatsAppIcon } from './BrandIcons.tsx'
 import css from './accounting.module.css'
 
 interface DriveProfile {
@@ -22,6 +23,11 @@ interface Integration {
   available: true
 }
 
+interface IntegrationState {
+  drive: boolean
+  gmail: boolean
+}
+
 const messageOf = (cause: unknown): string =>
   cause instanceof Error ? cause.message : String(cause)
 
@@ -37,28 +43,10 @@ async function callApi<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
-const DriveIcon = (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="#0f9d58" d="M8.6 3h6.8l6.6 11.4h-6.8z" />
-    <path fill="#f4b400" d="M2 14.4 8.6 3l3.4 5.9-6.6 11.4z" />
-    <path fill="#4285f4" d="M8.8 21 12.2 15h13l-3.4 6z" />
-  </svg>
-)
-
-const GmailIcon = (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="2" y="5" width="20" height="14" rx="2.4" fill="#ffffff" stroke="#e5e7eb" />
-    <path d="M4.4 7.4v9.2" stroke="#c5221f" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M19.6 7.4v9.2" stroke="#fbbc04" strokeWidth="2.2" strokeLinecap="round" />
-    <path d="M4.6 7.3 12 12.6l7.4-5.3" fill="none" stroke="#ea4335" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M4.6 16.9v-3.1l3.1 2.2" fill="none" stroke="#34a853" strokeWidth="2.2" strokeLinecap="round" />
-  </svg>
-)
-
 const COMING_SOON = [
-  { name: 'Slack', description: 'Post daily summaries to your team channel.' },
-  { name: 'WhatsApp', description: 'Send invoices and reminders to customers.' },
-  { name: 'QuickBooks', description: 'Import historical ledgers and contacts.' },
+  { name: 'Slack', description: 'Post daily summaries to your team channel.', icon: <SlackIcon /> },
+  { name: 'WhatsApp', description: 'Send invoices and reminders to customers.', icon: <WhatsAppIcon /> },
+  { name: 'QuickBooks', description: 'Import historical ledgers and contacts.', icon: <QuickBooksIcon /> },
 ]
 
 /** Integrations page: searchable cards, with Drive and Gmail settings. */
@@ -67,6 +55,7 @@ export function IntegrationsPage() {
   const [open, setOpen] = useState<'drive' | 'gmail' | null>(null)
   const [drive, setDrive] = useState<DriveProfile | null>(null)
   const [gmail, setGmail] = useState<GmailStatus | null>(null)
+  const [enabled, setEnabled] = useState<IntegrationState>({ drive: true, gmail: true })
   const [syncing, setSyncing] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +74,30 @@ export function IntegrationsPage() {
     } catch { /* core offline: keep the last known state */ }
   }, [])
 
-  useEffect(() => { loadDrive() }, [loadDrive])
+  const loadState = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetch(`${CORE_URL}/api/integrations/state`, { credentials: 'include' })
+      const body = await response.json().catch(() => null)
+      if (body !== null) setEnabled({ drive: body.drive !== false, gmail: body.gmail !== false })
+    } catch { /* keep the defaults while the core is offline */ }
+  }, [])
+
+  useEffect(() => { loadDrive(); void loadState() }, [loadDrive, loadState])
+
+  const toggleIntegration = async (id: 'drive' | 'gmail', next: boolean): Promise<void> => {
+    setEnabled(current => ({ ...current, [id]: next }))
+    setError(null)
+    try {
+      await callApi<IntegrationState>('/api/integrations/state', {
+        method: 'POST',
+        body: JSON.stringify({ integration: id, enabled: next }),
+      })
+      setNotice(`${id === 'drive' ? 'Google Drive' : 'Gmail'} ${next ? 'enabled' : 'disabled'}.`)
+    } catch (cause: unknown) {
+      setEnabled(current => ({ ...current, [id]: !next }))
+      setError(messageOf(cause))
+    }
+  }
 
   // The composer's Integrations menu hands off the card it wants opened.
   useEffect(() => {
@@ -140,14 +152,14 @@ export function IntegrationsPage() {
       id: 'drive',
       name: 'Google Drive',
       description: 'Automatically backup P&L, Balance Sheet, and Trial Balance reports.',
-      icon: DriveIcon,
+      icon: <GoogleDriveIcon />,
       available: true,
     },
     {
       id: 'gmail',
       name: 'Gmail',
       description: 'Send invoices, receipts, and financial reports directly from the AI.',
-      icon: GmailIcon,
+      icon: <GmailIcon />,
       available: true,
     },
   ]
@@ -191,19 +203,35 @@ export function IntegrationsPage() {
             ? drive?.driveConnected === true
             : gmail?.connected === true
           return (
-            <article key={item.id} className={css.integrationCard}>
+            <article
+              key={item.id}
+              className={`${css.integrationCard} ${enabled[item.id] ? '' : css.integrationOff}`}
+            >
               <div className={css.integrationTop}>
                 <span className={css.integrationLogo}>{item.icon}</span>
-                {connected && <span className={css.integrationBadge}>Connected</span>}
+                <span className={css.integrationSide}>
+                  {connected && <span className={css.integrationBadge}>Connected</span>}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled[item.id]}
+                    aria-label={`Enable ${item.name}`}
+                    className={`${css.switch} ${enabled[item.id] ? css.switchOn : ''}`}
+                    onClick={() => { void toggleIntegration(item.id, !enabled[item.id]) }}
+                  >
+                    <span className={css.switchKnob} />
+                  </button>
+                </span>
               </div>
               <h2 className={css.integrationName}>{item.name}</h2>
               <p className={css.integrationDesc}>{item.description}</p>
               <button
                 type="button"
                 className={`${css.button} ${css.primary} ${css.integrationManage}`}
+                disabled={!enabled[item.id]}
                 onClick={() => { setOpen(item.id); setError(null); setNotice(null) }}
               >
-                Manage
+                {enabled[item.id] ? 'Manage' : 'Disabled'}
               </button>
             </article>
           )
@@ -212,9 +240,7 @@ export function IntegrationsPage() {
         {soon.map(item => (
           <article key={item.name} className={`${css.integrationCard} ${css.integrationSoon}`}>
             <div className={css.integrationTop}>
-              <span className={`${css.integrationLogo} ${css.integrationLogoMuted}`}>
-                {item.name.slice(0, 1)}
-              </span>
+              <span className={`${css.integrationLogo} ${css.integrationLogoMuted}`}>{item.icon}</span>
               <span className={css.integrationBadge}>Coming soon</span>
             </div>
             <h2 className={css.integrationName}>{item.name}</h2>

@@ -5,6 +5,7 @@ import type { EmailAttachment } from '../lib/mailer.js';
 import { generatePdfReport } from '../lib/reports.js';
 import type { ReportType } from '../lib/reports.js';
 import { LedgerError } from '../engine/errors.js';
+import { companyPrisma } from '../lib/tenancy.js';
 
 const reportTypeSchema = z.enum(['PROFIT_AND_LOSS', 'BALANCE_SHEET', 'TRIAL_BALANCE']);
 
@@ -30,6 +31,10 @@ export async function emailRoutes(app: FastifyInstance): Promise<void> {
     const parsed = sendBody.safeParse(request.body);
     if (!parsed.success) {
       throw new LedgerError('VALIDATION', parsed.error.issues[0]?.message ?? 'Invalid email');
+    }
+    const profile = await companyPrisma(companyId).businessProfile.findFirst();
+    if (profile?.gmailEnabled === false) {
+      throw new LedgerError('STATE', 'Gmail is turned off in Integrations.');
     }
     const { to, subject, reportType } = parsed.data;
     const text = parsed.data.text ?? '';
