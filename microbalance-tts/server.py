@@ -17,7 +17,7 @@ from kokoro import KPipeline
 
 DEFAULT_VOICE = "af_bella"
 # A touch below native speed keeps Kokoro's delivery calm and unhurried.
-SPEED = 0.92
+SPEED = 0.88
 
 app = FastAPI(title="MicroBalance Kokoro TTS")
 _pipeline: KPipeline | None = None
