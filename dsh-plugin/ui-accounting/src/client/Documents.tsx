@@ -1,7 +1,7 @@
 /** Document Centre: upload receipts, OCR them, and create bills. */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { callCore, CORE_URL, formatNaira } from './core.ts'
+import { CORE_URL, formatNaira } from './core.ts'
 import css from './accounting.module.css'
 
 interface LineItem {
@@ -25,11 +25,6 @@ interface DocumentRecord {
   status: string
   source: string
   extractedData: ExtractedData | null
-}
-
-interface DriveProfile {
-  driveConnected: boolean
-  driveSyncSchedule: string
 }
 
 interface DocumentList {
@@ -70,8 +65,6 @@ export function DocumentCentrePage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
-  const [drive, setDrive] = useState<DriveProfile | null>(null)
-  const [syncing, setSyncing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const reload = useCallback((): void => {
@@ -82,52 +75,9 @@ export function DocumentCentrePage() {
       .finally(() => { setLoading(false) })
   }, [])
 
-  const loadDrive = useCallback((): void => {
-    callCore<DriveProfile | null>('GET_BUSINESS_PROFILE')
-      .then((profile) => { if (profile) setDrive(profile) })
-      .catch(() => { /* profile is required only for the Drive card */ })
-  }, [])
-
   useEffect(() => {
     reload()
-    loadDrive()
-  }, [reload, loadDrive])
-
-  const connectDrive = (): void => {
-    window.open(`${CORE_URL}/api/drive/connect`, '_blank', 'noopener')
-  }
-
-  const changeSchedule = async (schedule: string): Promise<void> => {
-    setError(null)
-    try {
-      await callApi<{ data: { schedule: string } }>('/api/drive/schedule', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ schedule }),
-      })
-      setDrive(current => current ? { ...current, driveSyncSchedule: schedule } : current)
-      setNotice(`Drive backup schedule set to ${schedule.toLowerCase()}.`)
-    } catch (cause: unknown) {
-      setError(messageOf(cause))
-    }
-  }
-
-  const syncDrive = async (): Promise<void> => {
-    setSyncing(true)
-    setError(null)
-    setNotice(null)
-    try {
-      const result = await callApi<{ data: { folder: string[]; uploaded: string[] } }>(
-        '/api/drive/sync',
-        { method: 'POST' },
-      )
-      setNotice(`Backed up ${result.data.uploaded.length} reports to ${result.data.folder.join(' / ')}.`)
-    } catch (cause: unknown) {
-      setError(messageOf(cause))
-    } finally {
-      setSyncing(false)
-    }
-  }
+  }, [reload])
 
   const upload = async (file: File): Promise<void> => {
     if (busy !== null) return
@@ -243,55 +193,6 @@ export function DocumentCentrePage() {
       {notice !== null && <div className={css.notice}>{notice}</div>}
       {error !== null && <div className={css.error}>{error}</div>}
       {busy !== null && <div className={css.notice}>{busy}</div>}
-
-      <div className={css.card}>
-        <div className={css.driveRow}>
-          <div className={css.field}>
-            <span className={css.label}>Google Drive Backup</span>
-            <span className={css.driveStatus}>
-              {drive === null
-                ? 'Loading…'
-                : drive.driveConnected ? 'Connected ✅' : 'Not connected'}
-            </span>
-          </div>
-          {drive !== null && !drive.driveConnected && (
-            <button
-              type="button"
-              className={`${css.button} ${css.primary}`}
-              onClick={connectDrive}
-            >
-              Connect Google Drive
-            </button>
-          )}
-          {drive !== null && drive.driveConnected && (
-            <>
-              <label className={css.field}>
-                <span className={css.label}>Sync schedule</span>
-                <select
-                  className={css.select}
-                  value={drive.driveSyncSchedule}
-                  onChange={(event) => { void changeSchedule(event.target.value) }}
-                >
-                  <option value="MANUAL">Manual</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className={`${css.button} ${css.primary}`}
-                onClick={() => { void syncDrive() }}
-                disabled={syncing}
-              >
-                {syncing ? 'Syncing…' : 'Sync Now'}
-              </button>
-              <button type="button" className={css.button} onClick={loadDrive}>
-                Refresh status
-              </button>
-            </>
-          )}
-        </div>
-      </div>
 
       <div
         className={`${css.card} ${dragging ? css.dropActive : css.dropZone}`}

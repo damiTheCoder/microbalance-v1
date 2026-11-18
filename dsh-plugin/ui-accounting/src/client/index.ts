@@ -36,6 +36,7 @@ import { withAuth } from './AuthGate.tsx'
 import { authClient, startGoogleSignIn } from './auth-client.ts'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
+import { IntegrationsPage } from './Integrations.tsx'
 import { LensButton } from './Lens.tsx'
 import { MailButton } from './Mail.tsx'
 import { CORE_URL } from './core.ts'
@@ -254,6 +255,13 @@ const PANELS: readonly PanelDefinition[] = [
     order: 64,
     Page: BusinessProfilePage,
     Icon: SettingsIcon,
+  },
+  {
+    id: 'integrations' as MainPanelId,
+    label: 'Settings::Integrations',
+    order: 254,
+    Page: IntegrationsPage,
+    Icon: LinkIcon,
   },
   {
     id: 'document-centre' as MainPanelId,

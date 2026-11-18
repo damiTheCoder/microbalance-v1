@@ -106,30 +106,6 @@ export function BusinessProfilePage() {
       {notice !== null && <div className={css.notice}>{notice}</div>}
       {error !== null && <div className={css.error}>{error}</div>}
 
-      {profile !== null && (
-        <div className={css.card}>
-          <div className={css.driveRow}>
-            <div className={css.field}>
-              <span className={css.label}>Google Drive backup</span>
-              <span className={css.driveStatus}>
-                {profile.driveConnected ? 'Connected ✅' : 'Not connected'}
-              </span>
-            </div>
-            <div className={css.field}>
-              <span className={css.label}>Backup schedule</span>
-              <span className={css.driveStatus}>
-                {profile.driveSyncSchedule === 'MANUAL'
-                  ? 'Manual'
-                  : profile.driveSyncSchedule === 'WEEKLY' ? 'Weekly' : 'Monthly'}
-              </span>
-            </div>
-            <span className={css.subtitle}>
-              Manage the connection and run a backup from Documents → Document Centre.
-            </span>
-          </div>
-        </div>
-      )}
-
       <form className={css.form} onSubmit={(event) => { void submit(event) }}>
         <div className={css.formRow}>
           <label className={`${css.field} ${css.grow}`}>
