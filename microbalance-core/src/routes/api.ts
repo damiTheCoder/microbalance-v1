@@ -278,6 +278,16 @@ export async function apiRoutes(app: FastifyInstance): Promise<void> {
     const ledger = ledgerFor(companyId);
 
     switch (body.action) {
+      case 'GET_BUSINESS_PROFILE': {
+        const db = companyPrisma(companyId);
+        const profile = await db.businessProfile.findFirst();
+        const company = await db.company.findUnique({ where: { id: companyId } });
+        return {
+          action: body.action,
+          data: { name: profile?.name || company?.name || 'Your business' },
+        };
+      }
+
       case 'GET_TRIAL_BALANCE':
         // Rows carry the IFRS `code`, `category`, and `isSystem` fields.
         return { action: body.action, data: await ledger.getTrialBalance() };
