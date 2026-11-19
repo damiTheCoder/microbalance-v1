@@ -14,6 +14,7 @@ import { formatNaira, loadBusinessName } from './core.ts'
 import brandMark from './assets/MM1.png'
 import { CHART_COLORS, chartAxisTick, chartCursor, chartTooltipStyle } from './chartTheme.ts'
 import { useTrialBalance } from './useTrialBalance.ts'
+import { UsageWidget } from './UsageWidget.tsx'
 import css from './dashboard.module.css'
 
 interface PerformancePoint {
@@ -312,6 +313,8 @@ export function DashboardPage() {
           ))}
         </ul>
       </section>
+
+      <UsageWidget />
     </div>
   )
 }

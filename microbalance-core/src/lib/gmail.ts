@@ -6,6 +6,9 @@ import { prisma } from './prisma.js';
 /** Scope that allows sending mail as the connected user. */
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 
+/** Scope that allows creating and editing calendar events. */
+export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
 /** Redirect registered in Google Cloud Console for this route. */
 export const gmailRedirectUri = (): string =>
   process.env.GMAIL_REDIRECT_URI ?? 'http://127.0.0.1:3001/api/email/callback';
@@ -39,7 +42,9 @@ export function getGmailAuthUrl(companyId: string): string {
   return gmailOAuthClient().generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: [GMAIL_SCOPE],
+    // `openid`/`email` let the callback read the account address; gmail.send
+    // alone cannot call users.getProfile (it needs gmail.readonly or metadata).
+    scope: ['openid', 'email', GMAIL_SCOPE, CALENDAR_SCOPE],
     state: signState(companyId),
   });
 }
@@ -49,18 +54,37 @@ export interface GmailTokens {
   email: string;
 }
 
+/** Read the `email` claim from a Google ID token without another network call. */
+function emailFromIdToken(idToken: string | null | undefined): string | null {
+  if (idToken === null || idToken === undefined) return null;
+  try {
+    const payload = idToken.split('.')[1];
+    if (payload === undefined) return null;
+    const claims: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (typeof claims !== 'object' || claims === null) return null;
+    const email = (claims as { email?: unknown }).email;
+    return typeof email === 'string' && email !== '' ? email : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Exchange the callback code for a refresh token and the account address. */
 export async function exchangeGmailCode(code: string): Promise<GmailTokens | null> {
   const client = gmailOAuthClient();
   const { tokens } = await client.getToken(code);
   if (tokens.refresh_token === null || tokens.refresh_token === undefined) return null;
   client.setCredentials(tokens);
-  const gmail = google.gmail({ version: 'v1', auth: client });
-  const profile = await gmail.users.getProfile({ userId: 'me' });
-  return {
-    refreshToken: tokens.refresh_token,
-    email: profile.data.emailAddress ?? '',
-  };
+  // gmail.send is send-only, so `users.getProfile` is not authorized; the
+  // consented `email` scope (or the ID token) carries the address instead.
+  let email = emailFromIdToken(tokens.id_token);
+  if (email === null) {
+    const info = await client.request<{ email?: string }>({
+      url: 'https://www.googleapis.com/oauth2/v2/userinfo',
+    });
+    email = info.data.email ?? '';
+  }
+  return { refreshToken: tokens.refresh_token, email };
 }
 
 /** AES-256-GCM key derived from the app secret. */
@@ -105,6 +129,14 @@ export async function gmailFor(companyId: string): Promise<{ gmail: ReturnType<t
   const client = gmailOAuthClient();
   client.setCredentials({ refresh_token: connection.refreshToken });
   return { gmail: google.gmail({ version: 'v1', auth: client }), email: connection.email };
+}
+
+/** Forget the company's stored Google connection (drive keeps its own token). */
+export async function disconnectGmail(companyId: string): Promise<void> {
+  await prisma.businessProfile.updateMany({
+    where: { companyId },
+    data: { gmailRefreshToken: null, gmailEmail: null },
+  });
 }
 
 /** Whether the company can send mail, and from which address. */

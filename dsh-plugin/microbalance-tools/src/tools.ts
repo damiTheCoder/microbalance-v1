@@ -1,5 +1,5 @@
 /**
- * The 24 model-facing MicroBalance tools.
+ * The 27 model-facing MicroBalance tools.
  *
  * Each definition is registered by `apply()` in `index.ts` through
  * `ctx.tools.register(defineTool(...))`. Tool bodies never throw: every core
@@ -8,7 +8,14 @@
 
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
-import { approveJournal, callCore, sendEmailRequest } from './core-client.ts'
+import {
+  approveJournal,
+  callCore,
+  listUpcomingMeetingsRequest,
+  scheduleMeetingRequest,
+  sendEmailRequest,
+  tokenUsageRequest,
+} from './core-client.ts'
 import { renderJson } from './render.ts'
 import type {
   ApAgingResult,
@@ -642,7 +649,82 @@ const sendEmailTool = defineTool({
   },
 })
 
-/** All 24 tool definitions, in stable registration order. */
+// ---------------------------------------------------------------------------
+// Google Calendar
+// ---------------------------------------------------------------------------
+
+const scheduleMeetingTool = defineTool({
+  name: 'schedule_meeting',
+  description:
+    'Schedule a Google Calendar event. Can optionally create a Google Meet link and invite attendees.',
+  parameters: {
+    summary: {
+      type: 'string',
+      required: true,
+      description: 'Event title, e.g. "Budget review with Ada".',
+    },
+    startTime: {
+      type: 'string',
+      required: true,
+      description: 'ISO 8601 start time with an offset, e.g. 2026-11-20T14:00:00+01:00.',
+    },
+    endTime: {
+      type: 'string',
+      required: true,
+      description: 'ISO 8601 end time with the same offset as startTime.',
+    },
+    attendees: {
+      type: 'array',
+      description: 'Email addresses to invite; they receive the invite by email.',
+      items: { type: 'string' },
+    },
+    createMeet: {
+      type: 'boolean',
+      description: 'Create a Google Meet link and add it to the event.',
+    },
+    description: {
+      type: 'string',
+      description: 'Optional agenda or notes for the event.',
+    },
+  },
+  output: jsonOutput,
+  execute: (args) => {
+    const attendees = args.attendees
+    const createMeet = args.createMeet
+    const description = args.description
+    return scheduleMeetingRequest({
+      summary: String(args.summary),
+      startTime: String(args.startTime),
+      endTime: String(args.endTime),
+      ...(attendees === undefined ? {} : { attendees: attendees.map(String) }),
+      ...(createMeet === undefined ? {} : { createMeet: Boolean(createMeet) }),
+      ...(description === undefined ? {} : { description: String(description) }),
+    })
+  },
+})
+
+const listUpcomingMeetingsTool = defineTool({
+  name: 'list_upcoming_meetings',
+  description: 'List the user\'s upcoming Google Calendar events.',
+  parameters: {},
+  output: jsonOutput,
+  execute: () => listUpcomingMeetingsRequest(),
+})
+
+// ---------------------------------------------------------------------------
+// AI usage
+// ---------------------------------------------------------------------------
+
+const getTokenUsageTool = defineTool({
+  name: 'get_token_usage',
+  description:
+    'Read the AI token usage and estimated cost for this company this month (input, output, cached tokens).',
+  parameters: {},
+  output: jsonOutput,
+  execute: () => tokenUsageRequest(),
+})
+
+/** All model-facing MicroBalance tools, in stable registration order. */
 export const microbalanceTools: ToolDefinition[] = [
   getTrialBalance,
   proposeJournalEntry,
@@ -668,4 +750,7 @@ export const microbalanceTools: ToolDefinition[] = [
   getBalanceSheet,
   getGeneralLedger,
   sendEmailTool,
+  scheduleMeetingTool,
+  listUpcomingMeetingsTool,
+  getTokenUsageTool,
 ]

@@ -32,11 +32,14 @@ import { ExpenseCategoriesPage, ExpensesPage } from './Expenses.tsx'
 import { AssetRegisterPage, DepreciationPage } from './FixedAssets.tsx'
 import { BudgetVsActualPage, BudgetsPage } from './Budgets.tsx'
 import { BusinessProfilePage } from './Settings.tsx'
+// Type-only: declares the settings slots this plugin registers into.
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { withAuth } from './AuthGate.tsx'
 import { authClient, startGoogleSignIn } from './auth-client.ts'
 import { DocumentCentrePage } from './Documents.tsx'
 import { AuditTrailPage, PeriodLockPage } from './Audit.tsx'
 import { IntegrationsPage } from './Integrations.tsx'
+import { SettingsAccountRow } from './SettingsAccountRow.tsx'
 import { CORE_URL } from './core.ts'
 import { EquityPage, LoansPage } from './EquityLoans.tsx'
 import { ProjectsPage, ProjectProfitabilityPage } from './Projects.tsx'
@@ -50,11 +53,11 @@ import {
   FileTextIcon,
   HourglassIcon,
   LandmarkIcon,
+  LayersIcon,
   LayoutGridIcon,
   LinkIcon,
   ListIcon,
   LayoutDashboardIcon,
-  ListTreeIcon,
   PackageIcon,
   PercentIcon,
   ReceiptIcon,
@@ -92,7 +95,7 @@ const PANELS: readonly PanelDefinition[] = [
     label: 'General Ledger::Chart of Accounts',
     order: 20,
     Page: ChartOfAccountsPage,
-    Icon: ListTreeIcon,
+    Icon: LayersIcon,
   },
   {
     id: 'journals' as MainPanelId,
@@ -369,6 +372,14 @@ export function apply(ctx: ClientContext): void {
     }
   })
 
+  // Sign-in state lives in Settings → General: the account email and the
+  // Google sign-out / sign-in trigger for this MicroBalance session.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'microbalance-account',
+    order: 5,
+  }, SettingsAccountRow))
+
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', function* () {
       yield ctx.slots.register({ name: 'sidebar.brand.mark' }, MicroBalanceMark)
@@ -390,13 +401,66 @@ export function apply(ctx: ClientContext): void {
     const openIntegrations = (): void => {
       ctx.layout.selectPanel('integrations' as MainPanelId)
     }
+    // The sidebar's search field asks every registered catalog for hits; the
+    // dispatch is synchronous, so pushing here fills the caller's array.
+    const search = (event: Event): void => {
+      const detail = (event as CustomEvent<{
+        query: string
+        push: (hit: { id: string; title: string; meta: string; group: 'page' | 'statement' | 'plugin'; run: () => void }) => void
+      }>).detail
+      const needle = detail.query.trim().toLowerCase()
+      if (needle === '') return
+      for (const panel of PANELS) {
+        const [section = '', title = panel.label] = panel.label.includes('::')
+          ? panel.label.split('::')
+          : ['', panel.label]
+        if (!`${section} ${title}`.toLowerCase().includes(needle)) continue
+        const statement = section === 'Financial Statements'
+        detail.push({
+          id: `panel:${panel.id}`,
+          title: title.trim(),
+          meta: statement ? 'Statement' : 'Page',
+          group: statement ? 'statement' : 'page',
+          run: () => { window.dispatchEvent(new CustomEvent('microbalance:open-panel', { detail: panel.id })) },
+        })
+      }
+      const plugins = [
+        { id: 'drive', title: 'Google Drive' },
+        { id: 'gmail', title: 'Gmail' },
+        { id: 'calendar', title: 'Google Calendar' },
+        { id: 'receipt', title: 'Receipt Scanner' },
+      ]
+      for (const plugin of plugins) {
+        if (!`${plugin.title} plugin integrations`.toLowerCase().includes(needle)) continue
+        detail.push({
+          id: `plugin:${plugin.id}`,
+          title: plugin.title,
+          meta: 'Plugin',
+          group: 'plugin',
+          run: () => {
+            if (plugin.id === 'receipt') {
+              window.dispatchEvent(new CustomEvent('microbalance:scan-receipt'))
+              return
+            }
+            window.dispatchEvent(new CustomEvent('microbalance:integration', { detail: plugin.id }))
+          },
+        })
+      }
+    }
+    const openPanel = (event: Event): void => {
+      ctx.layout.selectPanel((event as CustomEvent<string>).detail as MainPanelId)
+    }
     window.addEventListener('microbalance:integration', openIntegration)
     window.addEventListener('microbalance:scan-receipt', scanReceipt)
     window.addEventListener('microbalance:integrations', openIntegrations)
+    window.addEventListener('microbalance:search', search)
+    window.addEventListener('microbalance:open-panel', openPanel)
     return () => {
       window.removeEventListener('microbalance:integration', openIntegration)
       window.removeEventListener('microbalance:scan-receipt', scanReceipt)
       window.removeEventListener('microbalance:integrations', openIntegrations)
+      window.removeEventListener('microbalance:search', search)
+      window.removeEventListener('microbalance:open-panel', openPanel)
     }
   })
 

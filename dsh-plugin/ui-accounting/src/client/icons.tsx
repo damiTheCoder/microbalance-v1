@@ -351,15 +351,13 @@ export function LayoutDashboardIcon({ size }: IconProps): JSX.Element {
 }
 
 /** Lucide `list-tree`, used for the chart of accounts. */
-export function ListTreeIcon({ size }: IconProps): JSX.Element {
+export function LayersIcon({ size }: IconProps): JSX.Element {
   return (
     <Glyph size={size}>
       <>
-        <path d="M21 6H8" />
-        <path d="M21 12h-8" />
-        <path d="M21 18h-8" />
-        <path d="M3 6v4c0 1.1.9 2 2 2h3" />
-        <path d="M3 10v6c0 1.1.9 2 2 2h3" />
+        <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" />
+        <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+        <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
       </>
     </Glyph>
   )

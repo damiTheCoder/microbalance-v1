@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { companyPrisma } from '../lib/tenancy.js';
 import { LedgerError } from '../engine/errors.js';
+import { gmailStatus } from '../lib/gmail.js';
 
 const stateBody = z.object({
   integration: z.enum(['drive', 'gmail']),
@@ -17,6 +18,21 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
     return {
       drive: profile?.driveEnabled ?? true,
       gmail: profile?.gmailEnabled ?? true,
+    };
+  });
+
+  // Calendar shares the Google connection behind Gmail's refresh token.
+  app.get('/api/integrations/connected', async (request) => {
+    const companyId = request.companyId;
+    if (!companyId) throw new LedgerError('VALIDATION', 'Company is required');
+    const [profile, google] = await Promise.all([
+      companyPrisma(companyId).businessProfile.findFirst({ select: { driveConnected: true } }),
+      gmailStatus(companyId),
+    ]);
+    return {
+      drive: profile?.driveConnected === true,
+      gmail: google.connected,
+      calendar: google.connected,
     };
   });
 

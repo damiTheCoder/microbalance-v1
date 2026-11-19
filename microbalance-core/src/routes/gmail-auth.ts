@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { companyPrisma } from '../lib/tenancy.js';
 import { LedgerError } from '../engine/errors.js';
 import {
+  disconnectGmail,
   exchangeGmailCode,
   encryptToken,
   getGmailAuthUrl,
@@ -74,5 +75,12 @@ export async function gmailAuthRoutes(app: FastifyInstance): Promise<void> {
     const companyId = request.companyId;
     if (!companyId) throw new LedgerError('VALIDATION', 'Company is required');
     return gmailStatus(companyId);
+  });
+
+  app.post('/api/email/disconnect', async (request) => {
+    const companyId = request.companyId;
+    if (!companyId) throw new LedgerError('VALIDATION', 'Company is required');
+    await disconnectGmail(companyId);
+    return { connected: false, email: '' };
   });
 }

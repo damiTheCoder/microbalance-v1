@@ -1,8 +1,8 @@
-/** Integrations hub: connect Google Drive backups and Gmail sending. */
+/** Integrations hub: connect Google Drive backups, Gmail sending, and Calendar. */
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CORE_URL, callCore } from './core.ts'
-import { GmailIcon, GoogleDriveIcon, QuickBooksIcon, SlackIcon, WhatsAppIcon } from './BrandIcons.tsx'
+import { GmailIcon, GoogleCalendarIcon, GoogleDriveIcon, GoogleMeetIcon, QuickBooksIcon, SlackIcon, WhatsAppIcon } from './BrandIcons.tsx'
 import css from './accounting.module.css'
 
 interface DriveProfile {
@@ -16,7 +16,7 @@ interface GmailStatus {
 }
 
 interface Integration {
-  id: 'drive' | 'gmail'
+  id: 'drive' | 'gmail' | 'calendar'
   name: string
   description: string
   icon: ReactNode
@@ -26,6 +26,7 @@ interface Integration {
 interface IntegrationState {
   drive: boolean
   gmail: boolean
+  calendar: boolean
 }
 
 const messageOf = (cause: unknown): string =>
@@ -52,10 +53,10 @@ const COMING_SOON = [
 /** Integrations page: searchable cards, with Drive and Gmail settings. */
 export function IntegrationsPage() {
   const [query, setQuery] = useState('')
-  const [open, setOpen] = useState<'drive' | 'gmail' | null>(null)
+  const [open, setOpen] = useState<'drive' | 'gmail' | 'calendar' | null>(null)
   const [drive, setDrive] = useState<DriveProfile | null>(null)
   const [gmail, setGmail] = useState<GmailStatus | null>(null)
-  const [enabled, setEnabled] = useState<IntegrationState>({ drive: true, gmail: true })
+  const [enabled, setEnabled] = useState<IntegrationState>({ drive: true, gmail: true, calendar: true })
   const [syncing, setSyncing] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -78,15 +79,23 @@ export function IntegrationsPage() {
     try {
       const response = await fetch(`${CORE_URL}/api/integrations/state`, { credentials: 'include' })
       const body = await response.json().catch(() => null)
-      if (body !== null) setEnabled({ drive: body.drive !== false, gmail: body.gmail !== false })
+      if (body !== null) {
+        setEnabled(current => ({
+          drive: body.drive !== false,
+          gmail: body.gmail !== false,
+          calendar: current.calendar,
+        }))
+      }
     } catch { /* keep the defaults while the core is offline */ }
   }, [])
 
   useEffect(() => { loadDrive(); void loadState() }, [loadDrive, loadState])
 
-  const toggleIntegration = async (id: 'drive' | 'gmail', next: boolean): Promise<void> => {
+  const toggleIntegration = async (id: 'drive' | 'gmail' | 'calendar', next: boolean): Promise<void> => {
     setEnabled(current => ({ ...current, [id]: next }))
     setError(null)
+    // Calendar follows the same Google connection; there is nothing to persist.
+    if (id === 'calendar') return
     try {
       await callApi<IntegrationState>('/api/integrations/state', {
         method: 'POST',
@@ -102,18 +111,30 @@ export function IntegrationsPage() {
   // The composer's Integrations menu hands off the card it wants opened.
   useEffect(() => {
     const pending = window.sessionStorage.getItem('mb:integration')
-    if (pending !== 'drive' && pending !== 'gmail') return
+    if (pending !== 'drive' && pending !== 'gmail' && pending !== 'calendar') return
     window.sessionStorage.removeItem('mb:integration')
     setOpen(pending)
   }, [])
 
   // Poll only while the Gmail dialog is open so the OAuth return is picked up.
   useEffect(() => {
-    if (open !== 'gmail') return
+    if (open !== 'gmail' && open !== 'calendar') return
     void loadGmail()
     const timer = window.setInterval(() => { void loadGmail() }, 3000)
     return () => { window.clearInterval(timer) }
   }, [open, loadGmail])
+
+  const disconnectGoogle = async (): Promise<void> => {
+    setError(null)
+    setNotice(null)
+    try {
+      await callApi('/api/email/disconnect', { method: 'POST' })
+      setGmail({ connected: false, email: '' })
+      setNotice('Google account disconnected.')
+    } catch (cause: unknown) {
+      setError(messageOf(cause))
+    }
+  }
 
   const changeSchedule = async (schedule: string): Promise<void> => {
     setError(null)
@@ -160,6 +181,13 @@ export function IntegrationsPage() {
       name: 'Gmail',
       description: 'Send invoices, receipts, and financial reports directly from the AI.',
       icon: <GmailIcon />,
+      available: true,
+    },
+    {
+      id: 'calendar',
+      name: 'Google Calendar',
+      description: 'Schedule meetings, invite attendees, and create Google Meet links from the chat.',
+      icon: <GoogleCalendarIcon />,
       available: true,
     },
   ]
@@ -257,9 +285,13 @@ export function IntegrationsPage() {
       {open !== null && (
         <>
           <div className={css.mailBackdrop} onClick={close} />
-          <div className={css.mailDialog} role="dialog" aria-label={open === 'drive' ? 'Google Drive settings' : 'Gmail settings'}>
+          <div
+            className={css.mailDialog}
+            role="dialog"
+            aria-label={open === 'drive' ? 'Google Drive settings' : open === 'gmail' ? 'Gmail settings' : 'Google Calendar settings'}
+          >
             <h2 className={css.mailTitle}>
-              {open === 'drive' ? 'Google Drive' : 'Gmail'}
+              {open === 'drive' ? 'Google Drive' : open === 'gmail' ? 'Gmail' : 'Google Calendar'}
             </h2>
 
             {open === 'drive' && (
@@ -330,6 +362,48 @@ export function IntegrationsPage() {
                 <p className={css.subtitle}>
                   Once connected, use the Mail button in the chat composer or ask the AI to email a report.
                 </p>
+              </>
+            )}
+
+            {open === 'calendar' && (
+              <>
+                {gmail?.connected === true ? (
+                  <>
+                    <p className={css.mailConnected}>✅ Google connected as {gmail.email}</p>
+                    <button
+                      type="button"
+                      className={css.button}
+                      onClick={() => { void disconnectGoogle() }}
+                    >
+                      Disconnect Google account
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className={css.integrationStatus}>
+                      {gmail === null ? 'Checking connection…' : 'Not connected'}
+                    </p>
+                    <a
+                      className={css.mailConnect}
+                      href={`${CORE_URL}/api/email/connect`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Connect Google Calendar
+                    </a>
+                  </>
+                )}
+                <p className={css.meetNote}>
+                  <GoogleMeetIcon size={18} />
+                  <span>Meet links are added automatically when you ask for one.</span>
+                </p>
+                <p className={css.subtitle}>
+                  Uses the same Google account as Gmail. If calendar access was not granted before, the
+                  consent screen asks for it once — then ask the AI to schedule a meeting or create a Meet link.
+                </p>
+                <button type="button" className={css.button} onClick={() => { void loadGmail() }}>
+                  Refresh status
+                </button>
               </>
             )}
 

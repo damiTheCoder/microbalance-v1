@@ -6,8 +6,8 @@
   min-height: 100%;
   overflow: auto;
   padding: 32px 36px 48px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
   font-family: inherit;
 }
 
@@ -28,15 +28,15 @@
 
 .subtitle {
   margin: 6px 0 0;
-  color: #6b7280;
+  color: var(--dsw-alias-label-secondary);
   font-size: 13px;
 }
 
 .period {
   padding: 7px 14px;
   border-radius: 999px;
-  background: #ffffff;
-  color: #4b5563;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -49,7 +49,7 @@
   margin-bottom: 16px;
   padding: 18px 20px;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--dsw-alias-bg-layer-1);
 }
 
 .kpiIcon {
@@ -60,7 +60,7 @@
   height: 44px;
   overflow: hidden;
   border-radius: 14px;
-  background: #f3f4f6;
+  background: var(--dsw-alias-bg-layer-2);
 }
 
 .kpiIconImage {
@@ -79,7 +79,7 @@
 
 .kpiTitle {
   margin: 0;
-  color: #111827;
+  color: var(--dsw-alias-label-primary);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -91,7 +91,7 @@
   align-items: center;
   gap: 6px;
   margin: 2px 0 0;
-  color: #6b7280;
+  color: var(--dsw-alias-label-secondary);
   font-size: 11.5px;
 }
 
@@ -106,8 +106,8 @@
   padding: 2px 8px;
   border: 0;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
   font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
@@ -121,7 +121,7 @@
 }
 
 .kpiMetricLabel {
-  color: #6b7280;
+  color: var(--dsw-alias-label-secondary);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -135,15 +135,15 @@
   border: 0;
   border-radius: 6px;
   background: none;
-  color: #9ca3af;
+  color: var(--dsw-alias-label-tertiary);
   line-height: 0;
   cursor: pointer;
   transition: color 120ms ease, background 120ms ease;
 }
 
 .kpiGhost:hover {
-  background: #eef2f6;
-  color: #4b5563;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .kpiValueRow {
@@ -155,7 +155,7 @@
 }
 
 .kpiValue {
-  color: #111827;
+  color: var(--dsw-alias-label-primary);
   font-size: 32px;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -172,13 +172,13 @@
 }
 
 .kpiPillGood {
-  background: #dcfce7;
-  color: #166534;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
+  color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary));
 }
 
 .kpiPillBad {
-  background: #fee2e2;
-  color: #991b1b;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent);
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 70%, var(--dsw-alias-label-primary));
 }
 
 
@@ -190,9 +190,11 @@
   min-width: 248px;
   margin: 0;
   padding: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  background: var(--dsw-menu-glass-fill);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
   list-style: none;
 }
 
@@ -206,7 +208,7 @@
   border: 0;
   border-radius: 9px;
   background: none;
-  color: #374151;
+  color: var(--dsw-alias-label-secondary);
   font-size: 12.5px;
   text-align: left;
   white-space: nowrap;
@@ -214,8 +216,8 @@
 }
 
 .kpiMenuItem:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  color: var(--dsw-alias-label-primary);
 }
 
 .kpiMiniGood,
@@ -225,17 +227,17 @@
 }
 
 .kpiMiniGood {
-  color: #15803d;
+  color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary));
 }
 
 .kpiMiniBad {
-  color: #b91c1c;
+  color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 70%, var(--dsw-alias-label-primary));
 }
 
 .chartCard,
 .activityCard {
   border-radius: 20px;
-  background: #ffffff;
+  background: var(--dsw-alias-bg-layer-1);
 }
 
 .chartCard {
@@ -253,7 +255,7 @@
 
 .chartTitle {
   margin: 0;
-  color: #111827;
+  color: var(--dsw-alias-label-primary);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -261,7 +263,7 @@
 
 .chartSub {
   margin: 4px 0 0;
-  color: #9ca3af;
+  color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
 }
 
@@ -276,7 +278,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #6b7280;
+  color: var(--dsw-alias-label-secondary);
   font-size: 12px;
 }
 
@@ -293,7 +295,7 @@
 }
 
 .dotExpenses {
-  background: #dbeafe;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent);
 }
 
 .chartWrap {
@@ -307,7 +309,7 @@
 }
 
 .activityCount {
-  color: #9ca3af;
+  color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
 }
 
@@ -324,7 +326,7 @@
   align-items: center;
   gap: 12px;
   padding: 11px 2px;
-  border-top: 1px solid rgba(17, 24, 39, 0.05);
+  border-top: 1px solid color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
 }
 
 .activityRow:first-child {
@@ -339,7 +341,7 @@
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--dsw-alias-bg-layer-1);
   color: #1d4ed8;
   font-size: 13px;
   font-weight: 600;
@@ -354,21 +356,21 @@
 }
 
 .activityName {
-  color: #111827;
+  color: var(--dsw-alias-label-primary);
   font-size: 13px;
   font-weight: 500;
 }
 
 .activityMeta {
   overflow: hidden;
-  color: #9ca3af;
+  color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .activityAmount {
-  color: #111827;
+  color: var(--dsw-alias-label-primary);
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -388,15 +390,15 @@
 }
 
 .pillPosted {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-  color: #166534;
+  border-color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
+  color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary));
 }
 
 .pillPending {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent);
+  color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 60%, var(--dsw-alias-label-primary));
 }
 
 @media (max-width: 640px) {
@@ -463,4 +465,63 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
   }
+}
+
+/* AI usage card: tokens, estimated cost, and the monthly budget bar. */
+.usageCard {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+}
+.usageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.usageCost {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.usageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.usageStat {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+.usageLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+}
+.usageValue {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.usageBar {
+  height: 6px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3);
+  overflow: hidden;
+}
+.usageBarFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dsw-alias-state-business-primary);
+}
+.usageFoot {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
 }

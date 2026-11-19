@@ -84,19 +84,20 @@ function isTimeout(error: unknown): boolean {
  */
 async function request<T extends JsonValue>(
   path: string,
-  body: JsonValue,
+  body: JsonValue = {},
+  method: 'POST' | 'GET' = 'POST',
 ): Promise<T | CoreError> {
   let response: Response
 
   try {
     const token = agentToken()
     response = await fetch(`${coreApiUrl()}${path}`, {
-      method: 'POST',
+      method,
       headers: {
         'content-type': 'application/json',
         ...(token === undefined ? {} : { authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify(body),
+      ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(CORE_TIMEOUT_MS),
     })
   } catch (error) {
@@ -228,4 +229,47 @@ export async function sendEmailRequest(input: {
     return failure(message, code)
   }
   return (isRecord(payload) ? payload : { sent: true }) as JsonValue
+}
+
+/**
+ * Create a Google Calendar event, optionally with a Meet link and attendees.
+ *
+ * @param input - event summary, ISO times, attendee addresses, and the Meet choice.
+ * @returns the event id, Calendar link, and Meet link, or a `CoreError`.
+ */
+export function scheduleMeetingRequest(input: {
+  summary: string
+  startTime: string
+  endTime: string
+  description?: string
+  attendees?: string[]
+  createMeet?: boolean
+}): Promise<JsonValue | CoreError> {
+  const body: Record<string, JsonValue> = {
+    summary: input.summary,
+    startTime: input.startTime,
+    endTime: input.endTime,
+  }
+  if (input.description !== undefined) body.description = input.description
+  if (input.attendees !== undefined) body.attendees = input.attendees
+  if (input.createMeet !== undefined) body.createMeet = input.createMeet
+  return request('/api/calendar/create', body)
+}
+
+/**
+ * List the next events on the connected Google Calendar.
+ *
+ * @returns the upcoming events, or a `CoreError`.
+ */
+export function listUpcomingMeetingsRequest(): Promise<JsonValue | CoreError> {
+  return request('/api/calendar/upcoming', {}, 'GET')
+}
+
+/**
+ * Read the company's month-to-date AI token usage and estimated cost.
+ *
+ * @returns the usage totals and cost, or a `CoreError`.
+ */
+export function tokenUsageRequest(): Promise<JsonValue | CoreError> {
+  return request('/api/usage/tokens', {}, 'GET')
 }
