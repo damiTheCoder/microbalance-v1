@@ -68,7 +68,7 @@ services:
     healthCheckPath: /
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
-    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm run build:web && node deploy/apply-core-url.mjs
+    buildCommand: corepack pnpm install --no-frozen-lockfile && corepack pnpm run build:web && node deploy/apply-core-url.mjs
     startCommand: corepack pnpm dsh web --host 0.0.0.0 --port $PORT --patch ./deploy/cordis.patch.yml
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT

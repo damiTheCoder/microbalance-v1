@@ -3,12 +3,16 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: runtime uses the transaction pooler (6543), while migrations and
+  // `db push` need a session/direct connection (5432) for DDL.
+  directUrl = env("DIRECT_URL")
 }
 
-// Prisma 6 supports enums on SQLite: they are stored as TEXT and validated by
-// the generated client. These are the canonical value sets for the engine.
+// These enums are mapped to native Postgres enum types, so values are enforced
+// by the database as well as the generated client. These are the canonical
+// value sets for the engine.
 
 enum AccountType {
   ASSET
@@ -46,15 +50,15 @@ enum BankTxnType {
 }
 
 model Account {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id       String      @id @default(cuid())
-  code     String
-  name     String
-  type     AccountType
-  category String
-  isSystem Boolean     @default(false)
-  balance  Decimal     @default(0)
+  companyId String      @default("default")
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  code      String
+  name      String
+  type      AccountType
+  category  String
+  isSystem  Boolean     @default(false)
+  balance   Decimal     @default(0) @db.Decimal(18, 2)
 
   journalLines JournalLine[]
   budgetLines  BudgetLine[]
@@ -67,8 +71,8 @@ model Account {
 }
 
 model JournalEntry {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String        @default("default")
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id        String        @id @default(cuid())
   date      DateTime
   memo      String?
@@ -83,11 +87,11 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id             String   @id @default(cuid())
+  id             String  @id @default(cuid())
   journalEntryId String
   accountId      String
-  debit          Decimal  @default(0)
-  credit         Decimal  @default(0)
+  debit          Decimal @default(0) @db.Decimal(18, 2)
+  credit         Decimal @default(0) @db.Decimal(18, 2)
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      Account      @relation(fields: [accountId], references: [id])
@@ -97,55 +101,58 @@ model JournalLine {
 }
 
 model Customer {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id    String  @id @default(cuid())
-  name  String
-  email String?
-  phone String?
+  companyId String  @default("default")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
 
   invoices SalesInvoice[]
   projects Project[]
+
   @@index([companyId])
 }
 
 model Vendor {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id    String  @id @default(cuid())
-  name  String
-  email String?
-  phone String?
+  companyId String  @default("default")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
 
   bills PurchaseBill[]
+
   @@index([companyId])
 }
 
 model Item {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String  @default("default")
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id            String  @id @default(cuid())
   name          String
   sku           String?
-  price         Decimal
-  cost          Decimal
+  price         Decimal @db.Decimal(18, 2)
+  cost          Decimal @db.Decimal(18, 2)
   stockQuantity Int     @default(0)
 
   invoiceLines InvoiceLine[]
+
   @@index([companyId])
 }
 
 model SalesInvoice {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String        @default("default")
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id            String        @id @default(cuid())
   customerId    String
   invoiceNumber String
   date          DateTime
   dueDate       DateTime
   status        InvoiceStatus @default(DRAFT)
-  totalAmount   Decimal
-  amountPaid    Decimal       @default(0)
+  totalAmount   Decimal       @db.Decimal(18, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(18, 2)
 
   customer         Customer          @relation(fields: [customerId], references: [id])
   lines            InvoiceLine[]
@@ -163,8 +170,8 @@ model InvoiceLine {
   itemId      String?
   description String
   quantity    Decimal
-  unitPrice   Decimal
-  total       Decimal
+  unitPrice   Decimal @db.Decimal(18, 2)
+  total       Decimal @db.Decimal(18, 2)
 
   invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   item    Item?        @relation(fields: [itemId], references: [id])
@@ -174,21 +181,21 @@ model InvoiceLine {
 }
 
 model PurchaseBill {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId   String     @default("default")
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id          String     @id @default(cuid())
   vendorId    String
   billNumber  String
   date        DateTime
   dueDate     DateTime
   status      BillStatus @default(DRAFT)
-  totalAmount Decimal
-  vatRate     Decimal    @default(7.5)
-  vatAmount   Decimal    @default(0)
-  amountPaid  Decimal    @default(0)
-  whtRate     Decimal    @default(0)
-  whtAmount   Decimal    @default(0)
-  netPayable  Decimal    @default(0)
+  totalAmount Decimal    @db.Decimal(18, 2)
+  vatRate     Decimal    @default(7.5) @db.Decimal(5, 2)
+  vatAmount   Decimal    @default(0) @db.Decimal(18, 2)
+  amountPaid  Decimal    @default(0) @db.Decimal(18, 2)
+  whtRate     Decimal    @default(0) @db.Decimal(5, 2)
+  whtAmount   Decimal    @default(0) @db.Decimal(18, 2)
+  netPayable  Decimal    @default(0) @db.Decimal(18, 2)
 
   vendor           Vendor            @relation(fields: [vendorId], references: [id])
   lines            BillLine[]
@@ -205,8 +212,8 @@ model BillLine {
   billId      String
   description String
   quantity    Decimal
-  unitCost    Decimal
-  total       Decimal
+  unitCost    Decimal @db.Decimal(18, 2)
+  total       Decimal @db.Decimal(18, 2)
 
   bill PurchaseBill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
@@ -214,19 +221,19 @@ model BillLine {
 }
 
 model BankTransaction {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId        String        @default("default")
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id               String        @id @default(cuid())
   date             DateTime
   description      String
-  amount           Decimal
+  amount           Decimal       @db.Decimal(18, 2)
   type             BankTxnType
   status           BankTxnStatus @default(UNRECONCILED)
   matchedInvoiceId String?
   matchedBillId    String?
 
   matchedInvoice SalesInvoice? @relation("MatchedInvoice", fields: [matchedInvoiceId], references: [id], onDelete: SetNull)
-  matchedBill    PurchaseBill?  @relation("MatchedBill", fields: [matchedBillId], references: [id], onDelete: SetNull)
+  matchedBill    PurchaseBill? @relation("MatchedBill", fields: [matchedBillId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([date])
@@ -236,58 +243,59 @@ model BankTransaction {
 }
 
 model Employee {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id                 String  @id @default(cuid())
+  companyId          String    @default("default")
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                 String    @id @default(cuid())
   name               String
   email              String?
-  basicSalary        Decimal @default(0)
-  housingAllowance   Decimal @default(0)
-  transportAllowance Decimal @default(0)
-  isActive           Boolean @default(true)
+  basicSalary        Decimal   @default(0) @db.Decimal(18, 2)
+  housingAllowance   Decimal   @default(0) @db.Decimal(18, 2)
+  transportAllowance Decimal   @default(0) @db.Decimal(18, 2)
+  isActive           Boolean   @default(true)
   expenses           Expense[]
+
   @@index([companyId])
 }
 
 model PayrollRun {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String  @default("default")
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id           String  @id @default(cuid())
   month        String
   year         Int
   status       String  @default("DRAFT")
-  totalGross   Decimal @default(0)
-  totalNet     Decimal @default(0)
-  totalPaye    Decimal @default(0)
-  totalPension Decimal @default(0)
-  totalNhf     Decimal @default(0)
+  totalGross   Decimal @default(0) @db.Decimal(18, 2)
+  totalNet     Decimal @default(0) @db.Decimal(18, 2)
+  totalPaye    Decimal @default(0) @db.Decimal(18, 2)
+  totalPension Decimal @default(0) @db.Decimal(18, 2)
+  totalNhf     Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([companyId, month, year])
   @@index([companyId])
 }
 
 model ExpenseCategory {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id       String    @id @default(cuid())
-  name     String
-  expenses Expense[]
+  companyId String    @default("default")
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  name      String
+  expenses  Expense[]
 
   @@unique([companyId, name])
   @@index([companyId])
 }
 
 model Expense {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  id             String  @id @default(cuid())
+  companyId      String   @default("default")
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
   date           DateTime
   description    String
-  amount         Decimal
+  amount         Decimal  @db.Decimal(18, 2)
   categoryId     String
   employeeId     String?
   paymentMethod  String
-  status         String  @default("PENDING")
+  status         String   @default("PENDING")
   journalEntryId String?
 
   category ExpenseCategory @relation(fields: [categoryId], references: [id])
@@ -300,24 +308,25 @@ model Expense {
 }
 
 model FixedAsset {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId               String    @default("default")
+  company                 Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id                      String    @id @default(cuid())
   name                    String
   category                String
   purchaseDate            DateTime
-  cost                    Decimal
+  cost                    Decimal   @db.Decimal(18, 2)
   usefulLifeYears         Int
-  salvageValue            Decimal   @default(0)
-  accumulatedDepreciation Decimal   @default(0)
+  salvageValue            Decimal   @default(0) @db.Decimal(18, 2)
+  accumulatedDepreciation Decimal   @default(0) @db.Decimal(18, 2)
   isDisposed              Boolean   @default(false)
   disposalDate            DateTime?
+
   @@index([companyId])
 }
 
 model Budget {
-  companyId String @default("default")
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String       @default("default")
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   id         String       @id @default(cuid())
   name       String
   fiscalYear Int
@@ -325,6 +334,7 @@ model Budget {
   endDate    DateTime
   status     String       @default("ACTIVE")
   lines      BudgetLine[]
+
   @@index([companyId])
 }
 
@@ -332,7 +342,7 @@ model BudgetLine {
   id        String  @id @default(cuid())
   budgetId  String
   accountId String
-  amount    Decimal
+  amount    Decimal @db.Decimal(18, 2)
   period    String  @default("ANNUAL")
 
   budget  Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
@@ -353,9 +363,9 @@ model BusinessProfile {
   logoUrl           String?
   currency          String   @default("NGN")
   fiscalYearStart   String   @default("January")
-  vatRate           Decimal  @default(7.5)
-  whtRateCompany    Decimal  @default(10)
-  whtRateIndividual Decimal  @default(5)
+  vatRate           Decimal  @default(7.5) @db.Decimal(5, 2)
+  whtRateCompany    Decimal  @default(10) @db.Decimal(5, 2)
+  whtRateIndividual Decimal  @default(5) @db.Decimal(5, 2)
   driveConnected    Boolean  @default(false)
   driveRefreshToken String?
   gmailRefreshToken String?
@@ -375,28 +385,28 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts         Account[]
-  journalEntries   JournalEntry[]
-  customers        Customer[]
-  vendors          Vendor[]
-  items            Item[]
-  salesInvoices    SalesInvoice[]
-  purchaseBills    PurchaseBill[]
-  bankTransactions BankTransaction[]
-  employees        Employee[]
-  payrollRuns      PayrollRun[]
-  fixedAssets      FixedAsset[]
-  expenses         Expense[]
-  expenseCategories ExpenseCategory[]
-  budgets          Budget[]
-  businessProfile  BusinessProfile?
-  members          Member[]
-  invitations      Invitation[]
-  documents        Document[]
-  auditLogs        AuditLog[]
+  accounts           Account[]
+  journalEntries     JournalEntry[]
+  customers          Customer[]
+  vendors            Vendor[]
+  items              Item[]
+  salesInvoices      SalesInvoice[]
+  purchaseBills      PurchaseBill[]
+  bankTransactions   BankTransaction[]
+  employees          Employee[]
+  payrollRuns        PayrollRun[]
+  fixedAssets        FixedAsset[]
+  expenses           Expense[]
+  expenseCategories  ExpenseCategory[]
+  budgets            Budget[]
+  businessProfile    BusinessProfile?
+  members            Member[]
+  invitations        Invitation[]
+  documents          Document[]
+  auditLogs          AuditLog[]
   equityTransactions EquityTransaction[]
-  loans            Loan[]
-  projects         Project[]
+  loans              Loan[]
+  projects           Project[]
 }
 
 // ---------------------------------------------------------------------------
@@ -538,7 +548,7 @@ model EquityTransaction {
   id          String   @id @default(cuid())
   companyId   String   @default("default")
   type        String
-  amount      Decimal
+  amount      Decimal  @db.Decimal(18, 2)
   date        DateTime
   description String
   createdAt   DateTime @default(now())
@@ -553,11 +563,11 @@ model Loan {
   id              String   @id @default(cuid())
   companyId       String   @default("default")
   lenderName      String
-  principalAmount Decimal
-  interestRate    Decimal
+  principalAmount Decimal  @db.Decimal(18, 2)
+  interestRate    Decimal  @db.Decimal(5, 2)
   startDate       DateTime
   termMonths      Int
-  balance         Decimal
+  balance         Decimal  @db.Decimal(18, 2)
   status          String   @default("ACTIVE")
   createdAt       DateTime @default(now())
 
@@ -572,9 +582,9 @@ model LoanRepayment {
   id            String   @id @default(cuid())
   loanId        String
   date          DateTime
-  principalPaid Decimal
-  interestPaid  Decimal
-  totalPaid     Decimal
+  principalPaid Decimal  @db.Decimal(18, 2)
+  interestPaid  Decimal  @db.Decimal(18, 2)
+  totalPaid     Decimal  @db.Decimal(18, 2)
   createdAt     DateTime @default(now())
 
   loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
@@ -587,14 +597,14 @@ model Project {
   companyId String    @default("default")
   name      String
   clientId  String?
-  budget    Decimal   @default(0)
+  budget    Decimal   @default(0) @db.Decimal(18, 2)
   startDate DateTime
   endDate   DateTime?
   status    String    @default("ACTIVE")
   createdAt DateTime  @default(now())
 
-  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  client      Customer?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  company      Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client       Customer?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
   transactions ProjectTransaction[]
 
   @@index([companyId])
@@ -607,7 +617,7 @@ model ProjectTransaction {
   projectId   String
   date        DateTime
   description String
-  amount      Decimal
+  amount      Decimal  @db.Decimal(18, 2)
   type        String
   createdAt   DateTime @default(now())
 
