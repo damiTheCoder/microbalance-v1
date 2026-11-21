@@ -74,7 +74,7 @@ services:
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
     buildCommand: corepack pnpm install --no-frozen-lockfile && node deploy/apply-core-url.mjs
-    startCommand: corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 0.0.0.0 --port $PORT --no-open
+    startCommand: node deploy/tcp-proxy.mjs & exec corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
         value: "0"
@@ -87,6 +87,12 @@ services:
       # before it binds the port.
       - key: NODE_OPTIONS
         value: "--max-old-space-size=384"
+      - key: UI_PUBLIC_URL
+        value: https://microbalance-ui-rkzb.onrender.com/
+      - key: UI_HOST
+        value: microbalance-ui-rkzb.onrender.com
+      - key: DSH_PORT
+        value: "3081"
       - key: MICROBALANCE_CORE_URL
         sync: false
       - key: DEEPSEEK_API_KEY
