@@ -1,0 +1,75 @@
+# Temporary deployment: Render default *.onrender.com URLs, no custom domains.
+# Crossing those two hosts is cross-SITE (onrender.com is on the Public Suffix
+# List), so the core sets SameSite=None; Secure cookies (COOKIE_CROSS_SITE=1)
+# and an explicit CORS allow-list (CORS_ORIGINS).
+databases:
+  - name: microbalance-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: microbalance-core
+    runtime: node
+    plan: starter
+    region: frankfurt
+    repo: https://github.com/damiTheCoder/microbalance-v1
+    branch: main
+    rootDir: microbalance-core
+    healthCheckPath: /api/health
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm exec prisma generate && pnpm run build
+    # DDL runs here, not in the build: a failed build must not mutate the DB.
+    preDeployCommand: pnpm exec prisma db push
+    startCommand: node dist/src/index.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: microbalance-db
+          property: connectionString
+      - key: HOST
+        value: 0.0.0.0
+      # Third-party cookies: the UI calls this API from another site.
+      - key: COOKIE_CROSS_SITE
+        value: "1"
+      - key: AGENT_COMPANY_ID
+        value: default
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: AGENT_API_TOKEN
+        generateValue: true
+      # Filled in once Render assigns the URLs (see CORS_ORIGINS too).
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AGENT_USER_ID
+        sync: false
+      - key: SUPERADMIN_EMAIL
+        sync: false
+      - key: GMAIL_REDIRECT_URI
+        sync: false
+
+  - type: web
+    name: microbalance-ui
+    runtime: node
+    plan: starter
+    region: frankfurt
+    repo: https://github.com/damiTheCoder/deepseek-harness
+    branch: main
+    healthCheckPath: /
+    # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
+    # apply-core-url rewrites the committed client bundle to this core's URL.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build:web && node deploy/apply-core-url.mjs
+    startCommand: pnpm dsh web --host 0.0.0.0 --port $PORT --patch ./deploy/cordis.patch.yml
+    envVars:
+      - key: MICROBALANCE_CORE_URL
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false

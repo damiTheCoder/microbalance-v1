@@ -15,6 +15,21 @@ import { provisionCompany } from './provision.js';
  * table so an organization *is* a company. `Member` and `Invitation` reuse the
  * same `companyId` foreign key convention as the rest of the ERP schema.
  */
+/**
+ * Render's `*.onrender.com` hosts are separate sites (the domain is on the
+ * Public Suffix List), so a session cookie issued by the API is *third-party*
+ * when the UI calls it. That requires `SameSite=None; Secure`. Local dev runs
+ * over plain http, where browsers reject `SameSite=None` cookies, so the
+ * attribute only flips on when COOKIE_CROSS_SITE=1.
+ */
+const crossSiteCookies = process.env.COOKIE_CROSS_SITE === '1';
+
+/** Extra browser origins allowed to sign in (comma-separated). */
+const extraOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter((value) => value !== '');
+
 export const auth = betterAuth({
   // Dynamic base URL: the UI may be opened on localhost or 127.0.0.1, and the
   // OAuth redirect_uri must match the host the browser is actually using.
@@ -41,12 +56,23 @@ export const auth = betterAuth({
   },
 
   trustedOrigins: [
+    ...extraOrigins,
     'https://app.microbalance.ng',
     'http://localhost:3080',
     'http://127.0.0.1:3080',
     'http://localhost:3001',
     'http://127.0.0.1:3001',
   ],
+
+  // Only set when the UI and API are on different sites (Render default URLs).
+  ...(crossSiteCookies
+    ? {
+        advanced: {
+          useSecureCookies: true,
+          defaultCookieAttributes: { sameSite: 'none' as const, secure: true },
+        },
+      }
+    : {}),
 
   plugins: [
     organization({
