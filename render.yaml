@@ -73,7 +73,7 @@ services:
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
     buildCommand: corepack pnpm install --no-frozen-lockfile && node deploy/apply-core-url.mjs
-    startCommand: node deploy/tcp-proxy.mjs & exec env NODE_OPTIONS=--max-old-space-size=256 corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
+    startCommand: node deploy/http-proxy.mjs & exec env NODE_OPTIONS=--max-old-space-size=256 corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
         value: "0"
