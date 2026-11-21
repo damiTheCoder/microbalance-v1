@@ -4,7 +4,7 @@
 # and an explicit CORS allow-list (CORS_ORIGINS).
 databases:
   - name: microbalance-db
-    plan: basic-256mb
+    plan: free
     region: frankfurt
     postgresMajorVersion: "16"
 
@@ -12,7 +12,7 @@ services:
   - type: web
     name: microbalance-core
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     repo: https://github.com/damiTheCoder/microbalance-v1
     branch: main
@@ -59,7 +59,7 @@ services:
   - type: web
     name: microbalance-ui
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     repo: https://github.com/damiTheCoder/deepseek-harness
     branch: main
