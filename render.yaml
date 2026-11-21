@@ -82,6 +82,11 @@ services:
       # CI, and Render's checkout is not a normal worktree.
       - key: CI
         value: "true"
+      # 512 MB free-tier instance: tsx compiles the workspace at boot, and V8's
+      # default heap targets a larger machine, so the process is OOM-killed
+      # before it binds the port.
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=384"
       - key: MICROBALANCE_CORE_URL
         sync: false
       - key: DEEPSEEK_API_KEY
