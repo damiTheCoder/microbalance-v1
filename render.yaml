@@ -20,7 +20,7 @@ services:
     healthCheckPath: /api/health
     # Free tier has no preDeployCommand, so the schema push lives here. It runs
     # once per deploy, and only after generate + build have succeeded.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm exec prisma generate && pnpm exec prisma db push && pnpm run build
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm exec prisma generate && corepack pnpm exec prisma db push && corepack pnpm run build
     startCommand: node dist/src/index.js
     envVars:
       - key: DATABASE_URL
@@ -29,6 +29,8 @@ services:
           property: connectionString
       - key: HOST
         value: 0.0.0.0
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
       # Third-party cookies: the UI calls this API from another site.
       - key: COOKIE_CROSS_SITE
         value: "1"
@@ -66,9 +68,11 @@ services:
     healthCheckPath: /
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build:web && node deploy/apply-core-url.mjs
-    startCommand: pnpm dsh web --host 0.0.0.0 --port $PORT --patch ./deploy/cordis.patch.yml
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm run build:web && node deploy/apply-core-url.mjs
+    startCommand: corepack pnpm dsh web --host 0.0.0.0 --port $PORT --patch ./deploy/cordis.patch.yml
     envVars:
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
       - key: MICROBALANCE_CORE_URL
         sync: false
       - key: DEEPSEEK_API_KEY
