@@ -74,7 +74,7 @@ services:
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
     buildCommand: corepack pnpm install --no-frozen-lockfile && node deploy/apply-core-url.mjs
-    startCommand: node deploy/tcp-proxy.mjs & exec corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
+    startCommand: node deploy/tcp-proxy.mjs & exec env NODE_OPTIONS=--max-old-space-size=256 corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
         value: "0"
@@ -82,11 +82,6 @@ services:
       # CI, and Render's checkout is not a normal worktree.
       - key: CI
         value: "true"
-      # 512 MB free-tier instance: tsx compiles the workspace at boot, and V8's
-      # default heap targets a larger machine, so the process is OOM-killed
-      # before it binds the port.
-      - key: NODE_OPTIONS
-        value: "--max-old-space-size=256 --max-semi-space-size=16"
       - key: UI_PUBLIC_URL
         value: https://microbalance-ui-rkzb.onrender.com/
       - key: UI_HOST
