@@ -18,9 +18,9 @@ services:
     branch: main
     rootDir: microbalance-core
     healthCheckPath: /api/health
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm exec prisma generate && pnpm run build
-    # DDL runs here, not in the build: a failed build must not mutate the DB.
-    preDeployCommand: pnpm exec prisma db push
+    # Free tier has no preDeployCommand, so the schema push lives here. It runs
+    # once per deploy, and only after generate + build have succeeded.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm exec prisma generate && pnpm exec prisma db push && pnpm run build
     startCommand: node dist/src/index.js
     envVars:
       - key: DATABASE_URL
