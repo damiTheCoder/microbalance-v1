@@ -82,6 +82,10 @@ services:
       # CI, and Render's checkout is not a normal worktree.
       - key: CI
         value: "true"
+      # The build's pnpm install for 400 workspaces needs this much headroom;
+      # the start command overrides it with a smaller cap for the 512 MB runtime.
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=384"
       - key: UI_PUBLIC_URL
         value: https://microbalance-ui-rkzb.onrender.com/
       - key: UI_HOST
