@@ -27,6 +27,11 @@ services:
         fromDatabase:
           name: microbalance-db
           property: connectionString
+      # prisma/schema.prisma declares directUrl for migrations/DDL.
+      - key: DIRECT_URL
+        fromDatabase:
+          name: microbalance-db
+          property: connectionString
       - key: HOST
         value: 0.0.0.0
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
@@ -73,6 +78,10 @@ services:
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
         value: "0"
+      # The repo's postinstall installs git hooks; its installer exits early in
+      # CI, and Render's checkout is not a normal worktree.
+      - key: CI
+        value: "true"
       - key: MICROBALANCE_CORE_URL
         sync: false
       - key: DEEPSEEK_API_KEY
