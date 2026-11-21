@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { fileURLToPath } from 'node:url';
@@ -88,20 +89,24 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
   });
 
-  // The DSH Web UI is served from another port, so browser JSON POSTs need CORS
-  // with credentials (the Better Auth session cookie).
-  app.addHook('onRequest', async (request, reply) => {
-    const origin = request.headers.origin;
-    if (origin !== undefined) {
-      reply.header('Access-Control-Allow-Origin', origin);
-      reply.header('Vary', 'Origin');
-      reply.header('Access-Control-Allow-Credentials', 'true');
-    }
-    reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (request.method === 'OPTIONS') {
-      return reply.code(204).send();
-    }
+  // The UI is served from a different origin than this API: another port in
+  // development, and the `app.` subdomain in production. Browser requests carry
+  // the Better Auth session cookie, so the allow-list is explicit (never a
+  // reflected origin) and credentials are enabled.
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? [
+    'https://app.microbalance.ng',
+    'http://localhost:3080',
+    'http://127.0.0.1:3080',
+  ].join(','))
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+
+  await app.register(cors, {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Every ERP intent needs a Google session with an active organization.
