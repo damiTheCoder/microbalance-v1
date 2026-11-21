@@ -70,7 +70,6 @@ services:
     region: frankfurt
     repo: https://github.com/damiTheCoder/deepseek-harness
     branch: main
-    healthCheckPath: /
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
     buildCommand: corepack pnpm install --no-frozen-lockfile && node deploy/apply-core-url.mjs
