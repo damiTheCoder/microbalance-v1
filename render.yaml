@@ -86,7 +86,7 @@ services:
       # default heap targets a larger machine, so the process is OOM-killed
       # before it binds the port.
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=384"
+        value: "--max-old-space-size=256 --max-semi-space-size=16"
       - key: UI_PUBLIC_URL
         value: https://microbalance-ui-rkzb.onrender.com/
       - key: UI_HOST
