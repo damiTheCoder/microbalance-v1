@@ -73,7 +73,7 @@ services:
     # build:web produces apps/web/dist; the dsh CLI itself runs from TS sources.
     # apply-core-url rewrites the committed client bundle to this core's URL.
     buildCommand: corepack pnpm install --no-frozen-lockfile
-    startCommand: node deploy/http-proxy.mjs & exec env NODE_OPTIONS=--max-old-space-size=256 corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 127.0.0.1 --port 3081 --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open
+    startCommand: corepack pnpm dsh --profile web --patch ./deploy/cordis.patch.yml --host 0.0.0.0 --port $PORT --public-url $UI_PUBLIC_URL --trusted-host $UI_HOST --no-open; rc=$?; echo "dsh exited rc=$rc"; f=$(ls -t /opt/render/.dsh/logs/*.log 2>/dev/null | head -1); [ -n "$f" ] && tail -40 "$f"; exit $rc
     envVars:
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
         value: "0"
@@ -81,6 +81,11 @@ services:
       # CI, and Render's checkout is not a normal worktree.
       - key: CI
         value: "true"
+      # DSH refuses 0.0.0.0 by default because a wildcard bind exposes its
+      # shell tools on every interface. Inside a container there is no LAN, and
+      # Render requires it. Gated so local dev keeps the safe default.
+      - key: DSH_ALLOW_WILDCARD_BIND
+        value: "1"
       # The build's pnpm install for 400 workspaces needs this much headroom;
       # the start command overrides it with a smaller cap for the 512 MB runtime.
       - key: NODE_OPTIONS
