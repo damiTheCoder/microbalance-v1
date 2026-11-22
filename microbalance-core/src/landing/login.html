@@ -168,8 +168,12 @@
       var button = document.getElementById('google-signin');
       var label = document.getElementById('google-label');
       var error = document.getElementById('login-error');
-      // Same host as the app; the cookie is scoped to the host, not the port.
-      var appUrl = location.protocol + '//' + location.hostname + ':3080/';
+      // The app origin. The server injects APP_URL; the :3080 default only
+      // applies to local development, where the UI runs beside this core.
+      var appUrl = '%APP_URL%';
+      if (appUrl === '' || appUrl.indexOf('%APP') === 0) {
+        appUrl = location.protocol + '//' + location.hostname + ':3080/';
+      }
 
       function fail(message) {
         error.textContent = message;
@@ -192,9 +196,27 @@
           }),
         })
           .then(function (response) {
-            return response.json().then(function (body) {
-              if (!response.ok || !body.url) {
-                throw new Error(body.message || body.error || 'Could not start Google sign-in.');
+            // The API can answer 500 with an empty body (e.g. the database is
+            // unreachable). Calling response.json() on that throws
+            // "Unexpected end of JSON input" and hides the real failure, so
+            // read the body as text and parse it only when there is one.
+            return response.text().then(function (raw) {
+              var body = {};
+              if (raw) {
+                try {
+                  body = JSON.parse(raw);
+                } catch (_parseError) {
+                  body = {};
+                }
+              }
+              if (!body.url) {
+                throw new Error(
+                  body.message ||
+                    body.error ||
+                    (response.ok
+                      ? 'Could not start Google sign-in.'
+                      : 'Sign-in is unavailable right now (' + response.status + '). Please try again.'),
+                );
               }
               return body.url;
             });

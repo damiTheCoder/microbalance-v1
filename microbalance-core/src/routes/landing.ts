@@ -55,6 +55,8 @@ export async function landingRoutes(app: FastifyInstance): Promise<void> {
     return reply
       .type('text/html; charset=utf-8')
       .header('cache-control', 'no-store')
-      .send(LOGIN);
+      // The sign-in page posts callbackURL back to this core; it must name the
+      // real app origin, which differs between local (:3080) and deploys.
+      .send(LOGIN.replace('%APP_URL%', appUrl(request)));
   });
 }
